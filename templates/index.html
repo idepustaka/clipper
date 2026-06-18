@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>YouTube Auto Clipper</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #0a0a0a; color: #e8e8e8; min-height: 100vh; }
+
+    header { text-align: center; padding: 40px 16px 28px; }
+    header h1 { font-size: 2.2rem; font-weight: 800; background: linear-gradient(135deg, #ff4444, #ff8c00); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    header p { color: #666; margin-top: 6px; font-size: 0.95rem; }
+
+    /* ── MODE TABS ── */
+    .mode-tabs { display: flex; justify-content: center; gap: 10px; margin-bottom: 28px; padding: 0 16px; }
+    .mode-tab {
+      display: flex; align-items: center; gap: 8px;
+      padding: 12px 24px; border-radius: 12px;
+      border: 2px solid #1e1e1e; background: #111;
+      color: #888; font-size: 0.95rem; font-weight: 600;
+      cursor: pointer; transition: all 0.2s;
+    }
+    .mode-tab:hover { border-color: #333; color: #ccc; }
+    .mode-tab.active { border-color: #ff4444; color: #fff; background: #1a0505; }
+    .mode-tab .icon { font-size: 1.2rem; }
+
+    .container { max-width: 860px; margin: 0 auto; padding: 0 16px 80px; }
+    .panel { background: #111; border: 1px solid #1e1e1e; border-radius: 16px; padding: 28px; margin-bottom: 20px; }
+
+    /* ── SEARCH ── */
+    .search-bar { display: flex; gap: 10px; }
+    .search-bar input {
+      flex: 1; background: #0a0a0a; border: 1px solid #2a2a2a;
+      border-radius: 10px; color: #e8e8e8; font-size: 1rem;
+      padding: 14px 16px; outline: none; transition: border-color 0.2s;
+    }
+    .search-bar input:focus { border-color: #ff4444; }
+    .search-bar input::placeholder { color: #444; }
+
+    button.btn-red {
+      background: linear-gradient(135deg, #ff4444, #ff8c00);
+      border: none; border-radius: 10px; color: #fff;
+      font-size: 0.95rem; font-weight: 700; padding: 14px 24px;
+      cursor: pointer; white-space: nowrap; transition: opacity 0.2s;
+    }
+    button.btn-red:hover { opacity: 0.88; }
+    button.btn-red:disabled { opacity: 0.35; cursor: not-allowed; }
+
+    /* ── VIDEO GRID ── */
+    .results-title { font-size: 0.78rem; font-weight: 700; color: #666; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 14px; }
+    .video-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 12px; }
+    .video-card { background: #0a0a0a; border: 2px solid #1e1e1e; border-radius: 12px; overflow: hidden; cursor: pointer; transition: border-color 0.2s, transform 0.15s; }
+    .video-card:hover { border-color: #444; transform: translateY(-2px); }
+    .video-card.selected { border-color: #ff4444; }
+    .video-thumb { width: 100%; aspect-ratio: 16/9; object-fit: cover; display: block; }
+    .video-meta { padding: 10px 12px; }
+    .video-title { font-size: 0.82rem; font-weight: 600; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .video-stats { display: flex; gap: 8px; margin-top: 5px; font-size: 0.7rem; color: #666; flex-wrap: wrap; }
+    .badge-viral { background: #3a1010; color: #ff6b6b; border-radius: 4px; padding: 1px 6px; font-size: 0.68rem; font-weight: 700; }
+
+    /* ── SEGMENTS ── */
+    .seg-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; gap: 10px; }
+    .seg-header h3 { font-size: 1rem; font-weight: 700; }
+    .seg-actions { display: flex; gap: 8px; }
+    .btn-sm { background: #1a1a1a; border: 1px solid #333; color: #ccc; border-radius: 8px; padding: 7px 14px; font-size: 0.82rem; cursor: pointer; transition: background 0.15s; }
+    .btn-sm:hover { background: #252525; }
+
+    .segment-list { display: flex; flex-direction: column; gap: 8px; max-height: 400px; overflow-y: auto; }
+    .segment-item { display: flex; align-items: center; gap: 12px; background: #0a0a0a; border: 1px solid #1e1e1e; border-radius: 10px; padding: 12px 14px; cursor: pointer; transition: border-color 0.15s; }
+    .segment-item:hover { border-color: #333; }
+    .segment-item.selected { border-color: #ff4444; background: #140505; }
+    .seg-check { width: 20px; height: 20px; border-radius: 6px; border: 2px solid #333; flex-shrink: 0; display: flex; align-items: center; justify-content: center; transition: all 0.15s; }
+    .segment-item.selected .seg-check { background: #ff4444; border-color: #ff4444; }
+    .seg-check::after { content: ''; display: none; width: 5px; height: 9px; border: 2px solid #fff; border-top: none; border-left: none; transform: rotate(45deg) translate(-1px,-1px); }
+    .segment-item.selected .seg-check::after { display: block; }
+    .seg-info { flex: 1; min-width: 0; }
+    .seg-title { font-size: 0.88rem; font-weight: 600; }
+    .seg-time { font-size: 0.74rem; color: #666; margin-top: 2px; }
+    .seg-duration { font-size: 0.74rem; color: #888; background: #1a1a1a; border-radius: 6px; padding: 3px 8px; flex-shrink: 0; }
+
+    /* ── GOAL MODE ── */
+    .goal-form { display: flex; flex-direction: column; gap: 16px; }
+    .goal-url-row { display: flex; gap: 10px; }
+    .goal-url-row input { flex: 1; background: #0a0a0a; border: 1px solid #2a2a2a; border-radius: 10px; color: #e8e8e8; font-size: 1rem; padding: 14px 16px; outline: none; transition: border-color 0.2s; }
+    .goal-url-row input:focus { border-color: #ff4444; }
+    .goal-url-row input::placeholder { color: #444; }
+    .timing-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .timing-field label { display: block; font-size: 0.78rem; font-weight: 700; color: #888; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 8px; }
+    .timing-field input { width: 100%; background: #0a0a0a; border: 1px solid #2a2a2a; border-radius: 10px; color: #e8e8e8; font-size: 1rem; padding: 12px 14px; outline: none; transition: border-color 0.2s; text-align: center; font-weight: 700; }
+    .timing-field input:focus { border-color: #ff4444; }
+    .timing-field p { font-size: 0.75rem; color: #555; margin-top: 5px; }
+    .goal-info-box { background: #0d1a0d; border: 1px solid #1a3a1a; border-radius: 10px; padding: 14px 16px; font-size: 0.85rem; color: #7dba7d; line-height: 1.6; }
+
+    /* ── PROGRESS ── */
+    .progress-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+    .progress-header h3 { font-size: 1rem; font-weight: 700; }
+    .progress-pct { font-size: 1.4rem; font-weight: 800; color: #ff4444; }
+    .progress-bar-wrap { background: #0a0a0a; border-radius: 99px; height: 8px; overflow: hidden; margin-bottom: 10px; }
+    .progress-bar { height: 100%; background: linear-gradient(90deg, #ff4444, #ff8c00); border-radius: 99px; transition: width 0.5s ease; width: 0%; }
+    .status-msg { font-size: 0.85rem; color: #666; margin-bottom: 16px; }
+
+    .clip-results { display: flex; flex-direction: column; gap: 10px; }
+    .clip-result-item { background: #0a0a0a; border: 1px solid #1a5c38; border-radius: 10px; padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px; animation: slideIn 0.3s ease; }
+    @keyframes slideIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    .clip-result-info { flex: 1; min-width: 0; }
+    .clip-result-title { font-size: 0.9rem; font-weight: 600; color: #4cde87; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .clip-result-size { font-size: 0.75rem; color: #666; margin-top: 2px; }
+    .clip-result-item a { background: #1a5c38; color: #4cde87; text-decoration: none; padding: 7px 14px; border-radius: 8px; font-size: 0.82rem; font-weight: 600; flex-shrink: 0; transition: background 0.15s; }
+    .clip-result-item a:hover { background: #226644; }
+    .error-box { background: #1a0505; border: 1px solid #5c1a1a; border-radius: 10px; padding: 14px 16px; color: #ff6b6b; font-size: 0.88rem; }
+
+    /* ── SKELETON / SPINNER ── */
+    .spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid #333; border-top-color: #ff4444; border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; margin-right: 6px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .skeleton { background: linear-gradient(90deg, #1a1a1a 25%, #222 50%, #1a1a1a 75%); background-size: 200% 100%; animation: shimmer 1.4s infinite; border-radius: 8px; }
+    @keyframes shimmer { to { background-position: -200% 0; } }
+
+    /* ── STEPS ── */
+    .steps { display: flex; justify-content: center; gap: 0; margin: 0 auto 28px; max-width: 560px; padding: 0 16px; }
+    .step { flex: 1; text-align: center; position: relative; }
+    .step:not(:last-child)::after { content: ''; position: absolute; top: 16px; right: 0; width: 50%; height: 2px; background: #222; }
+    .step:not(:first-child)::before { content: ''; position: absolute; top: 16px; left: 0; width: 50%; height: 2px; background: #222; }
+    .step.active::after, .step.active::before, .step.done::after, .step.done::before { background: #ff4444; }
+    .step-num { width: 32px; height: 32px; border-radius: 50%; background: #1e1e1e; border: 2px solid #333; display: flex; align-items: center; justify-content: center; font-size: 0.78rem; font-weight: 700; margin: 0 auto 6px; position: relative; z-index: 1; transition: all 0.3s; }
+    .step.active .step-num { background: #ff4444; border-color: #ff4444; color: #fff; }
+    .step.done .step-num { background: #1a5c38; border-color: #4cde87; color: #4cde87; }
+    .step-label { font-size: 0.7rem; color: #666; }
+    .step.active .step-label { color: #ff4444; }
+
+    .text-muted { color: #666; font-size: 0.85rem; }
+    .mt-16 { margin-top: 16px; }
+  </style>
+</head>
+<body>
+
+<nav style="display:flex;align-items:center;justify-content:space-between;padding:14px 28px;border-bottom:1px solid #1e1e1e;position:sticky;top:0;background:#0a0a0a;z-index:50">
+  <a href="/" style="font-size:1.05rem;font-weight:800;background:linear-gradient(135deg,#ff4444,#ff8c00);-webkit-background-clip:text;-webkit-text-fill-color:transparent;text-decoration:none">✂️ YouTube Clipper</a>
+  <div style="display:flex;align-items:center;gap:16px">
+    <!-- Kuota -->
+    <div id="quota-info" style="display:flex;align-items:center;gap:8px;font-size:0.82rem;color:#666">
+      <span id="quota-text">Memuat...</span>
+      <span id="tier-badge" style="padding:3px 10px;border-radius:99px;font-size:0.7rem;font-weight:700;text-transform:uppercase"></span>
+    </div>
+    <a href="/pricing" style="color:#888;text-decoration:none;font-size:0.85rem">Upgrade</a>
+    <a href="/dashboard" style="color:#888;text-decoration:none;font-size:0.85rem">Dashboard</a>
+    <a href="/logout" style="color:#555;text-decoration:none;font-size:0.85rem">Keluar</a>
+  </div>
+</nav>
+
+<header>
+  <h1>YouTube Auto Clipper</h1>
+  <p>Cari video viral → pilih → potong otomatis</p>
+</header>
+
+<!-- Mode Tabs -->
+<div class="mode-tabs">
+  <div class="mode-tab active" id="tab-normal" onclick="switchMode('normal')">
+    <span class="icon">✂️</span> Mode Normal
+  </div>
+  <div class="mode-tab" id="tab-goals" onclick="switchMode('goals')">
+    <span class="icon">⚽</span> Deteksi Gol Otomatis
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- ══ MODE NORMAL ══ -->
+  <div id="mode-normal">
+
+    <!-- Steps -->
+    <div class="steps">
+      <div class="step active" id="step-1"><div class="step-num">1</div><div class="step-label">Cari</div></div>
+      <div class="step" id="step-2"><div class="step-num">2</div><div class="step-label">Pilih</div></div>
+      <div class="step" id="step-3"><div class="step-num">3</div><div class="step-label">Segmen</div></div>
+      <div class="step" id="step-4"><div class="step-num">4</div><div class="step-label">Clip</div></div>
+    </div>
+
+    <div class="panel">
+      <!-- Input tabs -->
+      <div style="display:flex;gap:0;margin-bottom:16px;background:#0a0a0a;border-radius:10px;padding:4px;">
+        <button id="input-tab-search" onclick="switchInputTab('search')"
+          style="flex:1;padding:9px;border:none;border-radius:8px;font-size:0.85rem;font-weight:700;cursor:pointer;background:#ff4444;color:#fff;transition:all 0.2s;">
+          🔍 Cari Topik
+        </button>
+        <button id="input-tab-url" onclick="switchInputTab('url')"
+          style="flex:1;padding:9px;border:none;border-radius:8px;font-size:0.85rem;font-weight:700;cursor:pointer;background:transparent;color:#666;transition:all 0.2s;">
+          🔗 Langsung URL
+        </button>
+      </div>
+
+      <!-- Search mode -->
+      <div id="input-search">
+        <div class="search-bar">
+          <input type="text" id="search-input" placeholder="Cari topik video viral..." />
+          <button class="btn-red" id="btn-search" onclick="searchVideos()">Cari</button>
+        </div>
+      </div>
+
+      <!-- URL mode -->
+      <div id="input-url" style="display:none">
+        <div class="search-bar">
+          <input type="text" id="direct-url-input" placeholder="https://www.youtube.com/watch?v=..." />
+          <button class="btn-red" id="btn-url-load" onclick="loadDirectUrl()">Muat</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel" id="results-section" style="display:none">
+      <p class="results-title" id="results-title">Video Ditemukan</p>
+      <div class="video-grid" id="video-grid"></div>
+
+      <!-- URL box muncul setelah klik video -->
+      <div id="url-box" style="display:none;margin-top:16px">
+        <p style="font-size:0.78rem;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px">URL Video Dipilih</p>
+        <div style="display:flex;gap:8px;align-items:center;background:#0a0a0a;border:1px solid #2a2a2a;border-radius:10px;padding:12px 14px;">
+          <span id="url-display" style="flex:1;font-size:0.85rem;color:#aaa;word-break:break-all;line-height:1.5"></span>
+          <button onclick="copyUrl()" id="btn-copy"
+            style="flex-shrink:0;background:#1e1e1e;border:1px solid #333;color:#ccc;padding:8px 16px;border-radius:8px;font-size:0.82rem;font-weight:600;cursor:pointer;transition:all 0.2s;white-space:nowrap">
+            📋 Salin
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel" id="segments-section" style="display:none">
+      <div class="seg-header">
+        <h3 id="seg-video-title">Segmen Video</h3>
+        <div class="seg-actions">
+          <button class="btn-sm" onclick="selectAll()">Pilih Semua</button>
+          <button class="btn-sm" onclick="deselectAll()">Batal Semua</button>
+        </div>
+      </div>
+      <p class="text-muted" id="seg-subtitle" style="margin-bottom:14px"></p>
+      <div class="segment-list" id="segment-list"></div>
+      <div class="mt-16">
+        <button class="btn-red" id="btn-clip" onclick="startClip()" style="width:100%">✂️ Potong Klip yang Dipilih</button>
+      </div>
+    </div>
+
+    <div class="panel" id="progress-section" style="display:none">
+      <div class="progress-header">
+        <h3 id="progress-label">Memproses...</h3>
+        <span class="progress-pct" id="progress-pct">0%</span>
+      </div>
+      <div class="progress-bar-wrap"><div class="progress-bar" id="progress-bar"></div></div>
+      <p class="status-msg" id="status-msg"></p>
+      <div id="clip-results"></div>
+    </div>
+
+  </div>
+
+  <!-- ══ MODE GOALS ══ -->
+  <div id="mode-goals" style="display:none">
+
+    <div class="panel">
+      <div class="goal-info-box" style="margin-bottom:20px">
+        ⚽ Mode ini mendeteksi momen gol secara otomatis berdasarkan <strong>lonjakan suara penonton</strong>.
+        Setiap klip dimulai beberapa detik <em>sebelum</em> gol terjadi hingga sesudahnya.
+        Gunakan video <strong>full match</strong> atau <strong>highlight</strong> untuk hasil terbaik.
+      </div>
+
+      <div class="goal-form">
+        <div class="goal-url-row">
+          <input type="text" id="goal-url" placeholder="Paste URL YouTube video sepak bola..." />
+        </div>
+
+        <div class="timing-row">
+          <div class="timing-field">
+            <label>⏪ Detik Sebelum Gol</label>
+            <input type="number" id="before-sec" value="30" min="5" max="120" />
+            <p>Mulai klip dari berapa detik sebelum gol</p>
+          </div>
+          <div class="timing-field">
+            <label>⏩ Detik Sesudah Gol</label>
+            <input type="number" id="after-sec" value="15" min="3" max="60" />
+            <p>Lanjutkan klip sampai berapa detik sesudah gol</p>
+          </div>
+        </div>
+
+        <button class="btn-red" id="btn-detect" onclick="startGoalDetect()" style="width:100%">
+          ⚽ Deteksi & Potong Momen Gol
+        </button>
+      </div>
+    </div>
+
+    <div class="panel" id="goal-progress-section" style="display:none">
+      <div class="progress-header">
+        <h3 id="goal-progress-label">Memproses...</h3>
+        <span class="progress-pct" id="goal-progress-pct">0%</span>
+      </div>
+      <div class="progress-bar-wrap"><div class="progress-bar" id="goal-progress-bar"></div></div>
+      <p class="status-msg" id="goal-status-msg"></p>
+      <div id="goal-clip-results"></div>
+    </div>
+
+  </div>
+
+</div>
+
+<script>
+  let currentMode = 'normal';
+  let selectedVideo = null;
+  let allSegments = [];
+  let selectedSegments = new Set();
+  let pollTimer = null;
+
+  // ── MODE SWITCH ────────────────────────────────────────────────────────────
+
+  function switchMode(mode) {
+    currentMode = mode;
+    document.getElementById('mode-normal').style.display = mode === 'normal' ? 'block' : 'none';
+    document.getElementById('mode-goals').style.display = mode === 'goals' ? 'block' : 'none';
+    document.getElementById('tab-normal').classList.toggle('active', mode === 'normal');
+    document.getElementById('tab-goals').classList.toggle('active', mode === 'goals');
+  }
+
+  // ── INPUT TAB SWITCH ───────────────────────────────────────────────────────
+
+  function switchInputTab(tab) {
+    const isSearch = tab === 'search';
+    document.getElementById('input-search').style.display = isSearch ? 'block' : 'none';
+    document.getElementById('input-url').style.display = isSearch ? 'none' : 'block';
+    document.getElementById('input-tab-search').style.background = isSearch ? '#ff4444' : 'transparent';
+    document.getElementById('input-tab-search').style.color = isSearch ? '#fff' : '#666';
+    document.getElementById('input-tab-url').style.background = isSearch ? 'transparent' : '#ff4444';
+    document.getElementById('input-tab-url').style.color = isSearch ? '#666' : '#fff';
+  }
+
+  async function loadDirectUrl() {
+    const url = document.getElementById('direct-url-input').value.trim();
+    if (!url) return alert('URL wajib diisi!');
+    const btn = document.getElementById('btn-url-load');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>Memuat...';
+    document.getElementById('results-section').style.display = 'none';
+    document.getElementById('segments-section').style.display = 'block';
+    document.getElementById('progress-section').style.display = 'none';
+    document.getElementById('segment-list').innerHTML = '<div style="color:#666;font-size:0.85rem;padding:8px 0"><span class="spinner"></span>Mengambil info video...</div>';
+    document.getElementById('seg-video-title').textContent = 'Memuat...';
+    setStep(3);
+    try {
+      const resp = await fetch(`/api/info?url=${encodeURIComponent(url)}`);
+      const info = await resp.json();
+      if (info.error) throw new Error(info.error);
+      selectedVideo = { url, title: info.title, id: '' };
+      allSegments = info.chapters;
+      selectedSegments = new Set(allSegments.map((_, i) => i));
+      document.getElementById('seg-video-title').textContent = info.title;
+      const hasChapters = info.chapters.some(c => c.title && !c.title.startsWith('Segmen'));
+      document.getElementById('seg-subtitle').textContent = hasChapters
+        ? `${allSegments.length} chapter ditemukan`
+        : `Video dipecah menjadi ${allSegments.length} segmen (~60 detik/segmen)`;
+      renderSegments();
+    } catch (e) {
+      document.getElementById('segment-list').innerHTML = `<div class="error-box">${e.message}</div>`;
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Muat';
+    }
+  }
+
+  // ── SEARCH ─────────────────────────────────────────────────────────────────
+
+  document.getElementById('search-input').addEventListener('keydown', e => { if (e.key === 'Enter') searchVideos(); });
+  document.getElementById('direct-url-input').addEventListener('keydown', e => { if (e.key === 'Enter') loadDirectUrl(); });
+
+  async function searchVideos() {
+    const q = document.getElementById('search-input').value.trim();
+    if (!q) return;
+    const btn = document.getElementById('btn-search');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>Mencari...';
+    document.getElementById('results-section').style.display = 'block';
+    document.getElementById('segments-section').style.display = 'none';
+    document.getElementById('progress-section').style.display = 'none';
+    document.getElementById('video-grid').innerHTML = renderSkeletons();
+    document.getElementById('results-title').textContent = `Mencari: "${q}"...`;
+    setStep(1);
+    try {
+      const resp = await fetch(`/api/search?q=${encodeURIComponent(q)}`);
+      const videos = await resp.json();
+      if (videos.error) throw new Error(videos.error);
+      document.getElementById('results-title').textContent = `${videos.length} Video Ditemukan`;
+      renderResults(videos);
+      setStep(2);
+    } catch (e) {
+      document.getElementById('video-grid').innerHTML = `<div class="error-box">${e.message}</div>`;
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Cari';
+    }
+  }
+
+  function renderSkeletons() {
+    return Array(6).fill(0).map(() => `
+      <div style="background:#111;border-radius:12px;overflow:hidden">
+        <div class="skeleton" style="width:100%;aspect-ratio:16/9"></div>
+        <div style="padding:10px 12px">
+          <div class="skeleton" style="height:14px;width:90%;margin-bottom:6px"></div>
+          <div class="skeleton" style="height:12px;width:60%"></div>
+        </div>
+      </div>`).join('');
+  }
+
+  function renderResults(videos) {
+    document.getElementById('video-grid').innerHTML = videos.map((v, i) => `
+      <div class="video-card ${i===0?'selected':''}" onclick="selectVideo(this, ${JSON.stringify(v).replace(/"/g,'&quot;')})" data-id="${v.id}">
+        <img class="video-thumb" src="${v.thumbnail}" loading="lazy" onerror="this.src='https://i.ytimg.com/vi/${v.id}/mqdefault.jpg'" />
+        <div class="video-meta">
+          <div class="video-title">${escHtml(v.title)}</div>
+          <div class="video-stats">
+            ${i===0?'<span class="badge-viral">🔥 VIRAL</span>':''}
+            <span>${fmtViews(v.view_count)}</span>
+            ${v.duration?`<span>${fmtDur(v.duration)}</span>`:''}
+          </div>
+        </div>
+      </div>`).join('');
+    if (videos.length > 0) selectVideo(document.querySelector('.video-card'), videos[0]);
+  }
+
+  function copyUrl() {
+    const url = document.getElementById('url-display').textContent;
+    navigator.clipboard.writeText(url).then(() => {
+      const btn = document.getElementById('btn-copy');
+      btn.textContent = '✅ Disalin!';
+      btn.style.color = '#4cde87';
+      btn.style.borderColor = '#4cde87';
+      setTimeout(() => { btn.textContent = '📋 Salin'; btn.style.color = '#ccc'; btn.style.borderColor = '#333'; }, 2000);
+    });
+  }
+
+  async function selectVideo(el, video) {
+    document.querySelectorAll('.video-card').forEach(c => c.classList.remove('selected'));
+    el.classList.add('selected');
+    selectedVideo = video;
+
+    // Tampilkan URL box
+    document.getElementById('url-display').textContent = video.url;
+    document.getElementById('url-box').style.display = 'block';
+    document.getElementById('btn-copy').textContent = '📋 Salin';
+    document.getElementById('btn-copy').style.color = '#ccc';
+    document.getElementById('btn-copy').style.borderColor = '#333';
+    document.getElementById('segments-section').style.display = 'block';
+    document.getElementById('progress-section').style.display = 'none';
+    document.getElementById('segment-list').innerHTML = '<div style="color:#666;font-size:0.85rem;padding:8px 0"><span class="spinner"></span>Mengambil info video...</div>';
+    document.getElementById('seg-video-title').textContent = video.title;
+    setStep(3);
+    try {
+      const resp = await fetch(`/api/info?url=${encodeURIComponent(video.url)}`);
+      const info = await resp.json();
+      if (info.error) throw new Error(info.error);
+      allSegments = info.chapters;
+      selectedSegments = new Set(allSegments.map((_, i) => i));
+      const hasChapters = info.chapters.some(c => c.title && !c.title.startsWith('Segmen'));
+      document.getElementById('seg-subtitle').textContent = hasChapters
+        ? `${allSegments.length} chapter ditemukan`
+        : `Video dipecah menjadi ${allSegments.length} segmen (~60 detik/segmen)`;
+      renderSegments();
+    } catch (e) {
+      document.getElementById('segment-list').innerHTML = `<div class="error-box">${e.message}</div>`;
+    }
+  }
+
+  function renderSegments() {
+    document.getElementById('segment-list').innerHTML = allSegments.map((seg, i) => `
+      <div class="segment-item ${selectedSegments.has(i)?'selected':''}" onclick="toggleSegment(${i})">
+        <div class="seg-check"></div>
+        <div class="seg-info">
+          <div class="seg-title">${escHtml(seg.title||`Segmen ${i+1}`)}</div>
+          <div class="seg-time">${fmtTime(seg.start_time)} → ${fmtTime(seg.end_time)}</div>
+        </div>
+        <div class="seg-duration">${fmtDur(seg.end_time - seg.start_time)}</div>
+      </div>`).join('');
+  }
+
+  function toggleSegment(i) {
+    if (selectedSegments.has(i)) selectedSegments.delete(i); else selectedSegments.add(i);
+    renderSegments();
+  }
+  function selectAll() { selectedSegments = new Set(allSegments.map((_, i) => i)); renderSegments(); }
+  function deselectAll() { selectedSegments = new Set(); renderSegments(); }
+
+  async function startClip() {
+    if (!selectedVideo) return alert('Pilih video terlebih dahulu');
+    if (selectedSegments.size === 0) return alert('Pilih minimal 1 segmen');
+    const segments = [...selectedSegments].sort((a,b)=>a-b).map(i => allSegments[i]);
+    document.getElementById('progress-section').style.display = 'block';
+    document.getElementById('btn-clip').disabled = true;
+    document.getElementById('clip-results').innerHTML = '';
+    setStep(4);
+    updateProgress(5, 'Memulai proses...', []);
+    const resp = await fetch('/api/clip', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ url: selectedVideo.url, segments })
+    });
+    const data = await resp.json();
+    if (data.error) { alert(data.error); document.getElementById('btn-clip').disabled = false; return; }
+    pollJobNormal(data.job_id);
+  }
+
+  function pollJobNormal(jobId) {
+    clearInterval(pollTimer);
+    pollTimer = setInterval(async () => {
+      const resp = await fetch(`/api/status/${jobId}`);
+      const job = await resp.json();
+      const msgs = { queued: 'Antri...', downloading: 'Mendownload video...', clipping: `Memotong... (${(job.clips||[]).length} selesai)`, done: `Selesai! ${(job.clips||[]).length} klip berhasil.`, error: 'Gagal.' };
+      updateProgress(job.progress, msgs[job.status]||job.status, job.clips||[]);
+      if (job.status === 'done' || job.status === 'error') {
+        clearInterval(pollTimer);
+        document.getElementById('btn-clip').disabled = false;
+        if (job.status === 'error') document.getElementById('clip-results').innerHTML = `<div class="error-box">${job.error}</div>`;
+      }
+    }, 1500);
+  }
+
+  function updateProgress(pct, msg, clips) {
+    document.getElementById('progress-bar').style.width = pct + '%';
+    document.getElementById('progress-pct').textContent = pct + '%';
+    document.getElementById('status-msg').textContent = msg;
+    document.getElementById('progress-label').textContent = pct === 100 ? '✅ Selesai!' : pct >= 60 ? '✂️ Memotong Klip...' : '⬇️ Mendownload...';
+    const container = document.getElementById('clip-results');
+    if (clips.length > container.children.length) {
+      clips.slice(container.children.length).forEach(c => {
+        const div = document.createElement('div');
+        div.className = 'clip-result-item';
+        div.innerHTML = `
+          <div class="clip-result-info">
+            <div class="clip-result-title">${escHtml(c.title)}</div>
+            <div class="clip-result-size">${fmtSize(c.size)} · ${fmtTime(c.start)} – ${fmtTime(c.end)}</div>
+          </div>
+          <a href="/api/download/${encodeURIComponent(c.filename)}">Download</a>`;
+        container.appendChild(div);
+      });
+    }
+  }
+
+  // ── GOAL DETECTION ─────────────────────────────────────────────────────────
+
+  async function startGoalDetect() {
+    const url = document.getElementById('goal-url').value.trim();
+    const before = parseInt(document.getElementById('before-sec').value) || 30;
+    const after = parseInt(document.getElementById('after-sec').value) || 15;
+    if (!url) return alert('URL wajib diisi!');
+
+    document.getElementById('btn-detect').disabled = true;
+    document.getElementById('btn-detect').innerHTML = '<span class="spinner"></span>Memproses...';
+    document.getElementById('goal-progress-section').style.display = 'block';
+    document.getElementById('goal-clip-results').innerHTML = '';
+    updateGoalProgress(5, 'Memulai...', []);
+
+    const resp = await fetch('/api/detect-goals', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ url, before_sec: before, after_sec: after })
+    });
+    const data = await resp.json();
+    if (data.error) {
+      alert(data.error);
+      document.getElementById('btn-detect').disabled = false;
+      document.getElementById('btn-detect').textContent = '⚽ Deteksi & Potong Momen Gol';
+      return;
+    }
+    pollGoalJob(data.job_id);
+  }
+
+  function pollGoalJob(jobId) {
+    clearInterval(pollTimer);
+    pollTimer = setInterval(async () => {
+      const resp = await fetch(`/api/status/${jobId}`);
+      const job = await resp.json();
+      const msgs = {
+        queued: 'Antri...',
+        downloading: '⬇️ Mendownload video...',
+        analyzing: '🔊 Menganalisis suara penonton...',
+        clipping: `✂️ Memotong klip gol... (${(job.clips||[]).length} selesai)`,
+        done: `✅ ${(job.clips||[]).length} momen gol ditemukan!`,
+        error: 'Gagal.'
+      };
+      updateGoalProgress(job.progress, msgs[job.status]||job.status, job.clips||[]);
+      if (job.status === 'done' || job.status === 'error') {
+        clearInterval(pollTimer);
+        document.getElementById('btn-detect').disabled = false;
+        document.getElementById('btn-detect').textContent = '⚽ Deteksi & Potong Momen Gol';
+        if (job.status === 'error') {
+          document.getElementById('goal-clip-results').innerHTML = `<div class="error-box">${job.error}</div>`;
+        } else if ((job.clips||[]).length === 0) {
+          document.getElementById('goal-clip-results').innerHTML = `<div class="error-box" style="background:#0d1a0d;border-color:#1a3a1a;color:#7dba7d">${job.message || 'Tidak ada momen gol terdeteksi. Coba video highlight atau full match.'}</div>`;
+        }
+      }
+    }, 1500);
+  }
+
+  function updateGoalProgress(pct, msg, clips) {
+    document.getElementById('goal-progress-bar').style.width = pct + '%';
+    document.getElementById('goal-progress-pct').textContent = pct + '%';
+    document.getElementById('goal-status-msg').textContent = msg;
+    document.getElementById('goal-progress-label').textContent =
+      pct === 100 ? '✅ Selesai!' :
+      pct >= 75 ? '✂️ Memotong Klip Gol...' :
+      pct >= 55 ? '🔊 Menganalisis Audio...' : '⬇️ Mendownload...';
+    const container = document.getElementById('goal-clip-results');
+    if (clips.length > container.children.length) {
+      clips.slice(container.children.length).forEach(c => {
+        const div = document.createElement('div');
+        div.className = 'clip-result-item';
+        div.innerHTML = `
+          <div class="clip-result-info">
+            <div class="clip-result-title">⚽ ${escHtml(c.title)}</div>
+            <div class="clip-result-size">${fmtSize(c.size)} · ${fmtTime(c.start)} – ${fmtTime(c.end)}</div>
+          </div>
+          <a href="/api/download/${encodeURIComponent(c.filename)}">Download</a>`;
+        container.appendChild(div);
+      });
+    }
+  }
+
+  // ── HELPERS ────────────────────────────────────────────────────────────────
+
+  function setStep(n) {
+    for (let i = 1; i <= 4; i++) {
+      const el = document.getElementById(`step-${i}`);
+      el.classList.remove('active','done');
+      if (i < n) el.classList.add('done');
+      else if (i === n) el.classList.add('active');
+    }
+  }
+  function fmtViews(n) {
+    if (!n) return '';
+    if (n >= 1e6) return (n/1e6).toFixed(1) + 'jt';
+    if (n >= 1e3) return (n/1e3).toFixed(0) + 'rb';
+    return n + '';
+  }
+  function fmtDur(s) {
+    if (!s) return '';
+    s = Math.round(s);
+    const h = Math.floor(s/3600), m = Math.floor((s%3600)/60), sec = s%60;
+    if (h) return `${h}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
+    return `${m}:${String(sec).padStart(2,'0')}`;
+  }
+  function fmtTime(s) { return fmtDur(s); }
+  function fmtSize(b) {
+    if (!b) return '';
+    if (b >= 1e6) return (b/1e6).toFixed(1) + ' MB';
+    return (b/1e3).toFixed(0) + ' KB';
+  }
+  function escHtml(s) {
+    return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  // Muat info kuota user
+  const tierColors = { free: '#888', pro: '#ff6b6b', business: '#4cde87' };
+  const tierBg     = { free: '#1a1a1a', pro: '#3a1010', business: '#0d2218' };
+  async function loadQuota() {
+    try {
+      const r = await fetch('/api/user/me');
+      const u = await r.json();
+      const quota = u.clips_limit ? `${u.remaining} / ${u.clips_limit} clip tersisa` : '∞ clip tersisa';
+      document.getElementById('quota-text').textContent = quota;
+      const badge = document.getElementById('tier-badge');
+      badge.textContent = u.tier_name;
+      badge.style.background = tierBg[u.tier] || '#1a1a1a';
+      badge.style.color = tierColors[u.tier] || '#888';
+    } catch(e) {}
+  }
+  loadQuota();
+</script>
+</body>
+</html>

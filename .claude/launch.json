@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "YouTube Clipper",
+      "runtimeExecutable": "/bin/sh",
+      "runtimeArgs": ["-c", "cd /Users/idepustakasetiawan/Desktop/CLAUDE/CLIPPER && python3 app.py"],
+      "port": 5000,
+      "autoPort": true
+    }
+  ]
+}
