@@ -144,18 +144,11 @@
     <h2 id="modal-title">Pilih Metode Pembayaran</h2>
     <p id="modal-desc">Pilih metode pembayaran yang kamu inginkan</p>
     <div class="pay-options">
-      <button class="pay-btn" id="btn-midtrans" onclick="pay('midtrans')">
+      <button class="pay-btn" id="btn-xendit" onclick="pay('xendit')">
         <span class="pay-icon">🇮🇩</span>
         <div class="pay-info">
-          <strong>Midtrans</strong>
-          <small>QRIS, GoPay, OVO, Transfer Bank, Kartu Kredit</small>
-        </div>
-      </button>
-      <button class="pay-btn" id="btn-stripe" onclick="pay('stripe')">
-        <span class="pay-icon">💳</span>
-        <div class="pay-info">
-          <strong>Stripe</strong>
-          <small>Kartu kredit/debit internasional (USD)</small>
+          <strong>Xendit</strong>
+          <small>QRIS, GoPay, OVO, Dana, Transfer Bank, Kartu Kredit</small>
         </div>
       </button>
     </div>
@@ -179,16 +172,14 @@
       window.location = '/login'; return;
     {% endif %}
     selectedTier = tier;
-    const names = { pro: 'Pro — Rp 99.000/bln', business: 'Business — Rp 299.000/bln' };
     document.getElementById('modal-title').textContent = 'Upgrade ke ' + (tier === 'pro' ? 'Pro' : 'Business');
-    document.getElementById('modal-desc').textContent = names[tier];
+    document.getElementById('modal-desc').textContent = tier === 'pro' ? 'Pro — Rp 99.000/bln' : 'Business — Rp 299.000/bln';
     document.getElementById('modal').classList.add('show');
   }
 
   function closeModal() {
     document.getElementById('modal').classList.remove('show');
-    document.getElementById('btn-midtrans').innerHTML = '<span class="pay-icon">🇮🇩</span><div class="pay-info"><strong>Midtrans</strong><small>QRIS, GoPay, OVO, Transfer Bank, Kartu Kredit</small></div>';
-    document.getElementById('btn-stripe').innerHTML = '<span class="pay-icon">💳</span><div class="pay-info"><strong>Stripe</strong><small>Kartu kredit/debit internasional (USD)</small></div>';
+    document.getElementById('btn-xendit').innerHTML = '<span class="pay-icon">🇮🇩</span><div class="pay-info"><strong>Xendit</strong><small>QRIS, GoPay, OVO, Dana, Transfer Bank, Kartu Kredit</small></div>';
   }
 
   async function pay(gateway) {
@@ -202,21 +193,8 @@
     const data = await resp.json();
 
     if (data.error) { alert(data.error); closeModal(); return; }
-
-    if (gateway === 'midtrans') {
-      window.snap.pay(data.token, {
-        onSuccess: () => { window.location = '/dashboard'; },
-        onPending: () => { window.location = '/dashboard'; },
-        onError: () => { alert('Pembayaran gagal.'); closeModal(); },
-        onClose: () => { closeModal(); }
-      });
-    } else {
-      window.location = data.checkout_url;
-    }
+    window.location = data.checkout_url;
   }
 </script>
-{% if config.MIDTRANS_CLIENT_KEY %}
-<script src="https://app.midtrans.com/snap/snap.js" data-client-key="{{ config.MIDTRANS_CLIENT_KEY }}"></script>
-{% endif %}
 </body>
 </html>

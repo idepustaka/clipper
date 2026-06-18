@@ -18,5 +18,8 @@ class Config:
     STRIPE_PUBLISHABLE_KEY = os.environ.get("STRIPE_PUBLISHABLE_KEY", "")
     STRIPE_WEBHOOK_SECRET  = os.environ.get("STRIPE_WEBHOOK_SECRET", "")
 
+    # Xendit
+    XENDIT_SECRET_KEY = os.environ.get("XENDIT_SECRET_KEY", "")
+
     # App
     APP_URL = os.environ.get("APP_URL", "http://127.0.0.1:5001")
