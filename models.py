@@ -7,7 +7,7 @@ db = SQLAlchemy()
 
 TIERS = {
     "free":     {"name": "Gratis",   "clips_per_month": 5,   "price_idr": 0,      "price_usd": 0},
-    "pro":      {"name": "Pro",      "clips_per_month": 100,  "price_idr": 99000,  "price_usd": 6},
+    "pro":      {"name": "Pro",      "clips_per_month": 30,   "price_idr": 99000,  "price_usd": 6},
     "business": {"name": "Business", "clips_per_month": None, "price_idr": 299000, "price_usd": 18},
 }
 
