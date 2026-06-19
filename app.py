@@ -76,6 +76,26 @@ def dashboard():
     subs = Subscription.query.filter_by(user_id=current_user.id).order_by(Subscription.created_at.desc()).limit(10).all()
     return render_template("dashboard.html", user=current_user, tiers=TIERS, subs=subs)
 
+@app.route("/admin")
+@login_required
+def admin():
+    if current_user.email != "idepustaka@gmail.com":
+        return redirect(url_for("index"))
+    users = User.query.order_by(User.created_at.desc()).all()
+    subs  = Subscription.query.order_by(Subscription.created_at.desc()).all()
+    stats = {
+        "total_users":    User.query.count(),
+        "free_users":     User.query.filter_by(tier="free").count(),
+        "pro_users":      User.query.filter_by(tier="pro").count(),
+        "business_users": User.query.filter_by(tier="business").count(),
+        "total_subs":     Subscription.query.count(),
+        "active_subs":    Subscription.query.filter_by(status="active").count(),
+        "mrr": (User.query.filter_by(tier="pro").count() * 99000 +
+                User.query.filter_by(tier="business").count() * 299000),
+    }
+    return render_template("admin.html", users=users, subs=subs, stats=stats)
+
+
 @app.route("/payment/success")
 @login_required
 def payment_success():
