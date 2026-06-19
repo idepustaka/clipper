@@ -96,6 +96,7 @@
           <th>#</th>
           <th>Nama</th>
           <th>Email</th>
+          <th>No. HP</th>
           <th>Tier</th>
           <th>Clip Dipakai</th>
           <th>Daftar</th>
@@ -107,6 +108,7 @@
           <td style="color:#444;">{{ u.id }}</td>
           <td>{{ u.name }}</td>
           <td style="color:#888;">{{ u.email }}</td>
+          <td style="color:#888;">{{ u.phone or '-' }}</td>
           <td><span class="badge badge-{{ u.tier }}">{{ u.tier }}</span></td>
           <td>{{ u.clips_used }}</td>
           <td style="color:#555;">{{ u.created_at.strftime('%d %b %Y') if u.created_at else '-' }}</td>

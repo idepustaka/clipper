@@ -14,6 +14,7 @@ def register():
         data = request.json or request.form
         name  = (data.get("name") or "").strip()
         email = (data.get("email") or "").strip().lower()
+        phone = (data.get("phone") or "").strip()
         pw    = data.get("password") or ""
 
         if not name or not email or not pw:
@@ -23,7 +24,7 @@ def register():
         if User.query.filter_by(email=email).first():
             return jsonify({"error": "Email sudah terdaftar"}), 400
 
-        user = User(name=name, email=email)
+        user = User(name=name, email=email, phone=phone)
         user.set_password(pw)
         db.session.add(user)
         db.session.commit()
