@@ -1,4 +1,5 @@
 import threading
+import time
 import requests as http_requests
 
 from flask import Blueprint, jsonify, redirect, render_template, request, url_for
@@ -7,6 +8,29 @@ from flask_login import login_required, login_user, logout_user, current_user
 from models import User, db
 
 auth = Blueprint("auth", __name__)
+
+# Rate limiting: {ip: [timestamp, ...]}
+_login_attempts = {}
+MAX_ATTEMPTS = 5
+BLOCK_SECONDS = 15 * 60  # 15 menit
+
+def _check_rate_limit(ip):
+    now = time.time()
+    attempts = _login_attempts.get(ip, [])
+    attempts = [t for t in attempts if now - t < BLOCK_SECONDS]
+    if len(attempts) >= MAX_ATTEMPTS:
+        return False, int(BLOCK_SECONDS - (now - attempts[0]))
+    return True, 0
+
+def _record_attempt(ip):
+    now = time.time()
+    attempts = _login_attempts.get(ip, [])
+    attempts = [t for t in attempts if now - t < BLOCK_SECONDS]
+    attempts.append(now)
+    _login_attempts[ip] = attempts
+
+def _clear_attempts(ip):
+    _login_attempts.pop(ip, None)
 
 
 def send_wa(phone, message, token):
@@ -70,12 +94,18 @@ def login():
     if current_user.is_authenticated:
         return redirect(url_for("index"))
     if request.method == "POST":
+        ip = request.remote_addr
+        allowed, wait = _check_rate_limit(ip)
+        if not allowed:
+            return jsonify({"error": f"Terlalu banyak percobaan login. Coba lagi dalam {wait // 60} menit."}), 429
         data  = request.json or request.form
         email = (data.get("email") or "").strip().lower()
         pw    = data.get("password") or ""
         user  = User.query.filter_by(email=email).first()
         if not user or not user.check_password(pw):
+            _record_attempt(ip)
             return jsonify({"error": "Email atau password salah"}), 401
+        _clear_attempts(ip)
         login_user(user, remember=True)
         return jsonify({"ok": True, "redirect": "/"})
     return render_template("login.html")
