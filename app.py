@@ -108,7 +108,7 @@ def admin():
         new_users = User.query.filter(User.created_at >= day_start, User.created_at < day_end).count()
         up_pro    = Subscription.query.filter(Subscription.tier == "pro",      Subscription.created_at >= day_start, Subscription.created_at < day_end).count()
         up_biz    = Subscription.query.filter(Subscription.tier == "business", Subscription.created_at >= day_start, Subscription.created_at < day_end).count()
-            daily.append({"tanggal": day_start.strftime("%-d %b %Y"), "users": new_users, "pro": up_pro, "business": up_biz})
+        daily.append({"tanggal": day_start.strftime("%-d %b %Y"), "users": new_users, "pro": up_pro, "business": up_biz})
 
     total_users_month = sum(r["users"] for r in daily)
     total_pro_month   = sum(r["pro"]   for r in daily)
