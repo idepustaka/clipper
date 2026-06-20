@@ -144,6 +144,21 @@ def admin_activate():
     return jsonify({"ok": True})
 
 
+@app.route("/admin/delete-user", methods=["POST"])
+@login_required
+def admin_delete_user():
+    if current_user.email != "idepustaka@gmail.com":
+        return jsonify({"error": "Unauthorized"}), 403
+    user_id = request.json.get("user_id")
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({"error": "User tidak ditemukan"}), 404
+    Subscription.query.filter_by(user_id=user.id).delete()
+    db.session.delete(user)
+    db.session.commit()
+    return jsonify({"ok": True})
+
+
 @app.route("/payment/success")
 @login_required
 def payment_success():

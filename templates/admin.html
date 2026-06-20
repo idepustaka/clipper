@@ -120,6 +120,7 @@
             <button onclick="aktivasi({{ u.id }}, 'pro')" style="background:#1a2a1a;color:#4caf50;border:1px solid #2a4a2a;border-radius:6px;padding:4px 10px;font-size:0.75rem;cursor:pointer;margin-right:4px;">Pro</button>
             <button onclick="aktivasi({{ u.id }}, 'business')" style="background:#1a1a2a;color:#7c6ff7;border:1px solid #2a2a4a;border-radius:6px;padding:4px 10px;font-size:0.75rem;cursor:pointer;margin-right:4px;">Business</button>
             <button onclick="aktivasi({{ u.id }}, 'free')" style="background:#1a1a1a;color:#666;border:1px solid #333;border-radius:6px;padding:4px 10px;font-size:0.75rem;cursor:pointer;">Free</button>
+            <button onclick="hapusUser({{ u.id }}, '{{ u.email }}')" style="background:#2a0a0a;color:#ff4444;border:1px solid #4a1a1a;border-radius:6px;padding:4px 10px;font-size:0.75rem;cursor:pointer;margin-left:4px;">Hapus</button>
           </td>
         </tr>
         {% else %}
@@ -169,6 +170,18 @@ function filterTable(tableId, query) {
   document.querySelectorAll('#' + tableId + ' tbody tr').forEach(row => {
     row.style.display = row.textContent.toLowerCase().includes(q) ? '' : 'none';
   });
+}
+
+async function hapusUser(userId, email) {
+  if (!confirm(`Hapus akun ${email}? Tindakan ini tidak bisa dibatalkan!`)) return;
+  const resp = await fetch('/admin/delete-user', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({user_id: userId})
+  });
+  const data = await resp.json();
+  if (data.ok) { alert('Akun berhasil dihapus!'); location.reload(); }
+  else { alert('Gagal: ' + data.error); }
 }
 
 async function aktivasi(userId, tier) {
