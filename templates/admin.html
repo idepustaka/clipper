@@ -153,14 +153,6 @@
     </div>
   </div>
 
-  <!-- Grafik 30 Hari -->
-  <div class="section">
-    <h2>Grafik 30 Hari Terakhir</h2>
-    <div style="background:#111;border:1px solid #1e1e1e;border-radius:12px;padding:24px;">
-      <canvas id="chart" height="100"></canvas>
-    </div>
-  </div>
-
   <!-- Daftar Pengguna -->
   <div class="section">
     <h2>Pengguna</h2>
@@ -239,28 +231,7 @@
   </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-const ctx = document.getElementById('chart').getContext('2d');
-new Chart(ctx, {
-  type: 'bar',
-  data: {
-    labels: {{ chart_labels | tojson }},
-    datasets: [
-      { label: 'Pendaftar Baru', data: {{ chart_users | tojson }}, backgroundColor: '#4488ff88', borderColor: '#4488ff', borderWidth: 1 },
-      { label: 'Upgrade Pro', data: {{ chart_pro | tojson }}, backgroundColor: '#4caf5088', borderColor: '#4caf50', borderWidth: 1 },
-      { label: 'Upgrade Business', data: {{ chart_business | tojson }}, backgroundColor: '#7c6ff788', borderColor: '#7c6ff7', borderWidth: 1 },
-    ]
-  },
-  options: {
-    plugins: { legend: { labels: { color: '#aaa' } } },
-    scales: {
-      x: { ticks: { color: '#666' }, grid: { color: '#1e1e1e' } },
-      y: { ticks: { color: '#666', stepSize: 1 }, grid: { color: '#1e1e1e' }, beginAtZero: true }
-    }
-  }
-});
-
 async function filterRekap() {
   const from = document.getElementById('filter-from').value;
   const to = document.getElementById('filter-to').value;
