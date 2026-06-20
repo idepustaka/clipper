@@ -421,13 +421,25 @@
 
   function copyUrl() {
     const url = document.getElementById('url-display').textContent;
-    navigator.clipboard.writeText(url).then(() => {
-      const btn = document.getElementById('btn-copy');
+    const btn = document.getElementById('btn-copy');
+    const done = () => {
       btn.textContent = '✅ Disalin!';
       btn.style.color = '#4cde87';
       btn.style.borderColor = '#4cde87';
       setTimeout(() => { btn.textContent = '📋 Salin'; btn.style.color = '#ccc'; btn.style.borderColor = '#333'; }, 2000);
-    });
+    };
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(url).then(done);
+    } else {
+      const ta = document.createElement('textarea');
+      ta.value = url;
+      ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.focus(); ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      done();
+    }
   }
 
   async function selectVideo(el, video) {
