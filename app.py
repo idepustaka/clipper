@@ -421,10 +421,11 @@ def download_clip(filename):
     path = CLIPS_DIR / filename
     if not path.exists():
         return jsonify({"error": "File tidak ditemukan"}), 404
-    if not current_user.can_clip():
-        return jsonify({"error": "Kuota clip habis. Upgrade untuk clip lebih banyak."}), 403
-    current_user.clips_used += 1
-    db.session.commit()
+    if current_user.email != "idepustaka@gmail.com":
+        if not current_user.can_clip():
+            return jsonify({"error": "Kuota clip habis. Upgrade untuk clip lebih banyak."}), 403
+        current_user.clips_used += 1
+        db.session.commit()
     return send_file(path, as_attachment=True)
 
 @app.route("/api/clips")
