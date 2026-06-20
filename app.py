@@ -84,15 +84,16 @@ def admin():
         return redirect(url_for("index"))
     users = User.query.order_by(User.created_at.desc()).all()
     subs  = Subscription.query.order_by(Subscription.created_at.desc()).all()
+    admin_id = User.query.filter_by(email="idepustaka@gmail.com").with_entities(User.id).scalar()
     stats = {
-        "total_users":    User.query.count(),
-        "free_users":     User.query.filter_by(tier="free").count(),
-        "pro_users":      User.query.filter_by(tier="pro").count(),
-        "business_users": User.query.filter_by(tier="business").count(),
-        "total_subs":     Subscription.query.count(),
-        "active_subs":    Subscription.query.filter_by(status="active").count(),
-        "mrr": (User.query.filter_by(tier="pro").count() * 99000 +
-                User.query.filter_by(tier="business").count() * 299000),
+        "total_users":    User.query.filter(User.id != admin_id).count(),
+        "free_users":     User.query.filter(User.id != admin_id, User.tier == "free").count(),
+        "pro_users":      User.query.filter(User.id != admin_id, User.tier == "pro").count(),
+        "business_users": User.query.filter(User.id != admin_id, User.tier == "business").count(),
+        "total_subs":     Subscription.query.filter(Subscription.user_id != admin_id).count(),
+        "active_subs":    Subscription.query.filter(Subscription.user_id != admin_id, Subscription.status == "active").count(),
+        "mrr": (User.query.filter(User.id != admin_id, User.tier == "pro").count() * 99000 +
+                User.query.filter(User.id != admin_id, User.tier == "business").count() * 299000),
     }
 
     now = datetime.now(timezone.utc)
