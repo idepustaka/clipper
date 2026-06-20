@@ -130,14 +130,14 @@ def admin_activate():
                 f"Halo {user.name}! 🎉\n\n"
                 f"Paket *Pro* kamu sudah aktif!\n"
                 f"Kamu bisa download *30 clip per bulan* mulai sekarang.\n\n"
-                f"👉 http://103.13.207.57"
+                f"👉 https://youtubeclipper.asia"
             )
         else:
             msg = (
                 f"Halo {user.name}! 🎉\n\n"
                 f"Paket *Business* kamu sudah aktif!\n"
                 f"Kamu bisa download clip *unlimited* mulai sekarang.\n\n"
-                f"👉 http://103.13.207.57"
+                f"👉 https://youtubeclipper.asia"
             )
         threading.Thread(target=send_wa, args=(user.phone, msg, fonnte_token), daemon=True).start()
 
@@ -487,7 +487,7 @@ def _check_subscription_expired(user):
                         f"Halo {user.name}! 😔\n\n"
                         f"Paket *{active_sub.tier.capitalize()}* kamu sudah berakhir.\n\n"
                         f"Perpanjang sekarang agar bisa download clip lagi!\n"
-                        f"👉 http://103.13.207.57/pricing"
+                        f"👉 https://youtubeclipper.asia/pricing"
                     )
                     threading.Thread(target=send_wa, args=(user.phone, msg, fonnte_token), daemon=True).start()
 
@@ -514,7 +514,7 @@ def download_clip(filename):
                     f"Halo {current_user.name}! ⚠️\n\n"
                     f"Kuota clip kamu tinggal *5 lagi* bulan ini.\n\n"
                     f"Upgrade ke Business untuk clip *unlimited*!\n"
-                    f"👉 http://103.13.207.57/pricing"
+                    f"👉 https://youtubeclipper.asia/pricing"
                 )
                 threading.Thread(target=send_wa, args=(current_user.phone, msg, fonnte_token), daemon=True).start()
     return send_file(path, as_attachment=True)
@@ -560,7 +560,7 @@ def _reminder_job():
                                     f"Halo {user.name}! ⏰\n\n"
                                     f"Paket *{sub.tier.capitalize()}* kamu akan berakhir dalam *3 hari*.\n\n"
                                     f"Perpanjang sekarang agar tidak terputus!\n"
-                                    f"👉 http://103.13.207.57/pricing"
+                                    f"👉 https://youtubeclipper.asia/pricing"
                                 )
                                 send_wa(user.phone, msg, fonnte_token)
         except Exception:
