@@ -100,6 +100,7 @@
           <th>Tier</th>
           <th>Clip Dipakai</th>
           <th>Daftar</th>
+          <th>Aksi</th>
         </tr>
       </thead>
       <tbody>
@@ -112,6 +113,11 @@
           <td><span class="badge badge-{{ u.tier }}">{{ u.tier }}</span></td>
           <td>{{ u.clips_used }}</td>
           <td style="color:#555;">{{ u.created_at.strftime('%d %b %Y') if u.created_at else '-' }}</td>
+          <td style="white-space:nowrap;">
+            <button onclick="aktivasi({{ u.id }}, 'pro')" style="background:#1a2a1a;color:#4caf50;border:1px solid #2a4a2a;border-radius:6px;padding:4px 10px;font-size:0.75rem;cursor:pointer;margin-right:4px;">Pro</button>
+            <button onclick="aktivasi({{ u.id }}, 'business')" style="background:#1a1a2a;color:#7c6ff7;border:1px solid #2a2a4a;border-radius:6px;padding:4px 10px;font-size:0.75rem;cursor:pointer;margin-right:4px;">Business</button>
+            <button onclick="aktivasi({{ u.id }}, 'free')" style="background:#1a1a1a;color:#666;border:1px solid #333;border-radius:6px;padding:4px 10px;font-size:0.75rem;cursor:pointer;">Free</button>
+          </td>
         </tr>
         {% else %}
         <tr><td colspan="6" class="empty">Belum ada pengguna</td></tr>
@@ -160,6 +166,18 @@ function filterTable(tableId, query) {
   document.querySelectorAll('#' + tableId + ' tbody tr').forEach(row => {
     row.style.display = row.textContent.toLowerCase().includes(q) ? '' : 'none';
   });
+}
+
+async function aktivasi(userId, tier) {
+  if (!confirm(`Aktifkan paket ${tier.toUpperCase()} untuk user ini?`)) return;
+  const resp = await fetch('/admin/activate', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({user_id: userId, tier: tier})
+  });
+  const data = await resp.json();
+  if (data.ok) { alert('Paket berhasil diaktifkan!'); location.reload(); }
+  else { alert('Gagal: ' + data.error); }
 }
 </script>
 </body>

@@ -97,6 +97,32 @@ def admin():
     return render_template("admin.html", users=users, subs=subs, stats=stats)
 
 
+@app.route("/admin/activate", methods=["POST"])
+@login_required
+def admin_activate():
+    if current_user.email != "idepustaka@gmail.com":
+        return jsonify({"error": "Unauthorized"}), 403
+    data = request.json
+    user_id = data.get("user_id")
+    tier = data.get("tier")
+    if tier not in ("free", "pro", "business"):
+        return jsonify({"error": "Tier tidak valid"}), 400
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({"error": "User tidak ditemukan"}), 404
+    user.tier = tier
+    user.clips_used = 0
+    if tier != "free":
+        sub = Subscription(
+            user_id=user.id, gateway="manual", order_id=f"MANUAL-{tier.upper()}-{uuid.uuid4().hex[:8].upper()}",
+            tier=tier, amount=99000 if tier == "pro" else 299000, currency="IDR", status="active",
+            valid_until=datetime.now(timezone.utc) + timedelta(days=30),
+        )
+        db.session.add(sub)
+    db.session.commit()
+    return jsonify({"ok": True})
+
+
 @app.route("/payment/success")
 @login_required
 def payment_success():
