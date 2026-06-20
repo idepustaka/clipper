@@ -94,7 +94,49 @@ def admin():
         "mrr": (User.query.filter_by(tier="pro").count() * 99000 +
                 User.query.filter_by(tier="business").count() * 299000),
     }
-    return render_template("admin.html", users=users, subs=subs, stats=stats)
+
+    now = datetime.now(timezone.utc)
+
+    # Data 30 hari terakhir untuk grafik
+    chart_labels = []
+    chart_users = []
+    chart_pro = []
+    chart_business = []
+    for i in range(29, -1, -1):
+        day = now - timedelta(days=i)
+        day_start = day.replace(hour=0, minute=0, second=0, microsecond=0)
+        day_end = day_start + timedelta(days=1)
+        chart_labels.append(day.strftime("%d/%m"))
+        chart_users.append(User.query.filter(User.created_at >= day_start, User.created_at < day_end).count())
+        chart_pro.append(Subscription.query.filter(Subscription.tier=="pro", Subscription.created_at >= day_start, Subscription.created_at < day_end).count())
+        chart_business.append(Subscription.query.filter(Subscription.tier=="business", Subscription.created_at >= day_start, Subscription.created_at < day_end).count())
+
+    # Rekap harian/bulanan/tahunan
+    today = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    year_start = now.replace(month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
+
+    rekap = {
+        "hari": {
+            "users": User.query.filter(User.created_at >= today).count(),
+            "pro": Subscription.query.filter(Subscription.tier=="pro", Subscription.created_at >= today).count(),
+            "business": Subscription.query.filter(Subscription.tier=="business", Subscription.created_at >= today).count(),
+        },
+        "bulan": {
+            "users": User.query.filter(User.created_at >= month_start).count(),
+            "pro": Subscription.query.filter(Subscription.tier=="pro", Subscription.created_at >= month_start).count(),
+            "business": Subscription.query.filter(Subscription.tier=="business", Subscription.created_at >= month_start).count(),
+        },
+        "tahun": {
+            "users": User.query.filter(User.created_at >= year_start).count(),
+            "pro": Subscription.query.filter(Subscription.tier=="pro", Subscription.created_at >= year_start).count(),
+            "business": Subscription.query.filter(Subscription.tier=="business", Subscription.created_at >= year_start).count(),
+        },
+    }
+
+    return render_template("admin.html", users=users, subs=subs, stats=stats,
+                           rekap=rekap, chart_labels=chart_labels,
+                           chart_users=chart_users, chart_pro=chart_pro, chart_business=chart_business)
 
 
 @app.route("/admin/activate", methods=["POST"])
