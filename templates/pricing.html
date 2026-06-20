@@ -138,21 +138,34 @@
   </div>
 </div>
 
-<!-- Modal Pilih Pembayaran -->
+<!-- Modal Pembayaran Transfer Bank -->
 <div class="modal-overlay" id="modal">
   <div class="modal">
-    <h2 id="modal-title">Pilih Metode Pembayaran</h2>
-    <p id="modal-desc">Pilih metode pembayaran yang kamu inginkan</p>
-    <div class="pay-options">
-      <button class="pay-btn" id="btn-xendit" onclick="pay('xendit')">
-        <span class="pay-icon">🇮🇩</span>
-        <div class="pay-info">
-          <strong>Xendit</strong>
-          <small>QRIS, GoPay, OVO, Dana, Transfer Bank, Kartu Kredit</small>
+    <h2 id="modal-title">Upgrade Paket</h2>
+    <p id="modal-desc" style="margin-bottom:20px;"></p>
+
+    <div style="background:#0a0a0a;border:1px solid #2a2a2a;border-radius:12px;padding:20px;margin-bottom:16px;">
+      <div style="font-size:0.75rem;color:#666;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:12px;font-weight:700;">Transfer ke Rekening</div>
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;">
+        <span style="font-size:1.5rem;">🏦</span>
+        <div>
+          <div style="font-weight:700;font-size:1rem;">BCA</div>
+          <div style="color:#888;font-size:0.85rem;">IDE PUSTAKA SETIAWAN</div>
         </div>
-      </button>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;background:#111;border:1px solid #222;border-radius:8px;padding:12px 16px;">
+        <span style="font-size:1.1rem;font-weight:700;letter-spacing:0.05em;" id="rekening-number">0372470966</span>
+        <button onclick="copyRekening()" id="btn-copy-rek" style="background:#1e1e1e;border:1px solid #333;color:#ccc;padding:6px 14px;border-radius:6px;font-size:0.8rem;cursor:pointer;">📋 Salin</button>
+      </div>
     </div>
-    <button class="modal-close" onclick="closeModal()">Batal</button>
+
+    <div style="background:#1a1a0a;border:1px solid #3a3a1a;border-radius:10px;padding:14px 16px;margin-bottom:16px;font-size:0.85rem;color:#c0b060;line-height:1.6;">
+      ⚠️ Setelah transfer, hubungi admin via WhatsApp untuk konfirmasi dan aktivasi paket kamu.
+      <br><br>
+      <a href="https://wa.me/6282137481104" target="_blank" style="color:#25d366;font-weight:700;text-decoration:none;">💬 Chat Admin WhatsApp →</a>
+    </div>
+
+    <button class="modal-close" onclick="closeModal()">Tutup</button>
   </div>
 </div>
 
@@ -172,28 +185,32 @@
       window.location = '/login'; return;
     {% endif %}
     selectedTier = tier;
+    const label = tier === 'pro' ? 'Pro — Rp 99.000/bulan' : 'Business — Rp 299.000/bulan';
     document.getElementById('modal-title').textContent = 'Upgrade ke ' + (tier === 'pro' ? 'Pro' : 'Business');
-    document.getElementById('modal-desc').textContent = tier === 'pro' ? 'Pro — Rp 99.000/bln' : 'Business — Rp 299.000/bln';
+    document.getElementById('modal-desc').textContent = 'Transfer sebesar ' + (tier === 'pro' ? 'Rp 99.000' : 'Rp 299.000') + ' ke rekening berikut:';
     document.getElementById('modal').classList.add('show');
   }
 
   function closeModal() {
     document.getElementById('modal').classList.remove('show');
-    document.getElementById('btn-xendit').innerHTML = '<span class="pay-icon">🇮🇩</span><div class="pay-info"><strong>Xendit</strong><small>QRIS, GoPay, OVO, Dana, Transfer Bank, Kartu Kredit</small></div>';
   }
 
-  async function pay(gateway) {
-    const btn = document.getElementById('btn-' + gateway);
-    btn.innerHTML = '<span class="spinner"></span> Memproses...';
-
-    const resp = await fetch(`/api/pay/${gateway}/create`, {
-      method: 'POST', headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ tier: selectedTier })
-    });
-    const data = await resp.json();
-
-    if (data.error) { alert(data.error); closeModal(); return; }
-    window.location = data.checkout_url;
+  function copyRekening() {
+    const num = document.getElementById('rekening-number').textContent;
+    const btn = document.getElementById('btn-copy-rek');
+    const done = () => {
+      btn.textContent = '✅ Disalin!';
+      btn.style.color = '#4cde87';
+      setTimeout(() => { btn.textContent = '📋 Salin'; btn.style.color = '#ccc'; }, 2000);
+    };
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(num).then(done);
+    } else {
+      const ta = document.createElement('textarea');
+      ta.value = num; ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.focus(); ta.select();
+      document.execCommand('copy'); document.body.removeChild(ta); done();
+    }
   }
 </script>
 </body>
