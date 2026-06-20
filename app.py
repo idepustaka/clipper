@@ -120,6 +120,27 @@ def admin_activate():
         )
         db.session.add(sub)
     db.session.commit()
+
+    # Kirim notif WA ke user saat paket diaktifkan
+    fonnte_token = app.config.get("FONNTE_TOKEN", "")
+    if user.phone and fonnte_token and tier != "free":
+        from auth import send_wa
+        if tier == "pro":
+            msg = (
+                f"Halo {user.name}! 🎉\n\n"
+                f"Paket *Pro* kamu sudah aktif!\n"
+                f"Kamu bisa download *30 clip per bulan* mulai sekarang.\n\n"
+                f"👉 http://103.13.207.57"
+            )
+        else:
+            msg = (
+                f"Halo {user.name}! 🎉\n\n"
+                f"Paket *Business* kamu sudah aktif!\n"
+                f"Kamu bisa download clip *unlimited* mulai sekarang.\n\n"
+                f"👉 http://103.13.207.57"
+            )
+        threading.Thread(target=send_wa, args=(user.phone, msg, fonnte_token), daemon=True).start()
+
     return jsonify({"ok": True})
 
 
