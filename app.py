@@ -97,30 +97,7 @@ def admin():
 
     now = datetime.now(timezone.utc)
 
-    # Rekap harian/bulanan/tahunan
-    today = now.replace(hour=0, minute=0, second=0, microsecond=0)
-    month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-    year_start = now.replace(month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
-
-    rekap = {
-        "hari": {
-            "users": User.query.filter(User.created_at >= today).count(),
-            "pro": Subscription.query.filter(Subscription.tier=="pro", Subscription.created_at >= today).count(),
-            "business": Subscription.query.filter(Subscription.tier=="business", Subscription.created_at >= today).count(),
-        },
-        "bulan": {
-            "users": User.query.filter(User.created_at >= month_start).count(),
-            "pro": Subscription.query.filter(Subscription.tier=="pro", Subscription.created_at >= month_start).count(),
-            "business": Subscription.query.filter(Subscription.tier=="business", Subscription.created_at >= month_start).count(),
-        },
-        "tahun": {
-            "users": User.query.filter(User.created_at >= year_start).count(),
-            "pro": Subscription.query.filter(Subscription.tier=="pro", Subscription.created_at >= year_start).count(),
-            "business": Subscription.query.filter(Subscription.tier=="business", Subscription.created_at >= year_start).count(),
-        },
-    }
-
-    return render_template("admin.html", users=users, subs=subs, stats=stats, rekap=rekap)
+    return render_template("admin.html", users=users, subs=subs, stats=stats)
 
 
 @app.route("/admin/stats")

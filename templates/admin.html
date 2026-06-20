@@ -105,42 +105,6 @@
       </div>
     </div>
 
-    <!-- Tabel rekap default -->
-    <table id="rekap-table">
-      <thead>
-        <tr>
-          <th>Periode</th>
-          <th>Pendaftar Baru</th>
-          <th>Upgrade Pro</th>
-          <th>Upgrade Business</th>
-          <th>Total Omzet</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td><strong>Hari Ini</strong></td>
-          <td>{{ rekap.hari.users }}</td>
-          <td>{{ rekap.hari.pro }}</td>
-          <td>{{ rekap.hari.business }}</td>
-          <td class="revenue">Rp {{ "{:,.0f}".format(rekap.hari.pro * 99000 + rekap.hari.business * 299000) }}</td>
-        </tr>
-        <tr>
-          <td><strong>Bulan Ini</strong></td>
-          <td>{{ rekap.bulan.users }}</td>
-          <td>{{ rekap.bulan.pro }}</td>
-          <td>{{ rekap.bulan.business }}</td>
-          <td class="revenue">Rp {{ "{:,.0f}".format(rekap.bulan.pro * 99000 + rekap.bulan.business * 299000) }}</td>
-        </tr>
-        <tr>
-          <td><strong>Tahun Ini</strong></td>
-          <td>{{ rekap.tahun.users }}</td>
-          <td>{{ rekap.tahun.pro }}</td>
-          <td>{{ rekap.tahun.business }}</td>
-          <td class="revenue">Rp {{ "{:,.0f}".format(rekap.tahun.pro * 99000 + rekap.tahun.business * 299000) }}</td>
-        </tr>
-      </tbody>
-    </table>
-
     <!-- Hasil filter custom -->
     <div id="filter-result" style="display:none;margin-top:16px;">
       <h2 id="filter-title"></h2>
