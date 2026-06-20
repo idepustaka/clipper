@@ -106,8 +106,9 @@ def admin():
         day_start = month_start.replace(day=d, hour=0, minute=0, second=0, microsecond=0)
         day_end   = day_start + timedelta(days=1)
         new_users = User.query.filter(User.created_at >= day_start, User.created_at < day_end).count()
-        up_pro    = Subscription.query.filter(Subscription.tier == "pro",      Subscription.created_at >= day_start, Subscription.created_at < day_end).count()
-        up_biz    = Subscription.query.filter(Subscription.tier == "business", Subscription.created_at >= day_start, Subscription.created_at < day_end).count()
+        admin_id  = User.query.filter_by(email="idepustaka@gmail.com").with_entities(User.id).scalar()
+        up_pro    = Subscription.query.filter(Subscription.tier == "pro",      Subscription.user_id != admin_id, Subscription.created_at >= day_start, Subscription.created_at < day_end).count()
+        up_biz    = Subscription.query.filter(Subscription.tier == "business", Subscription.user_id != admin_id, Subscription.created_at >= day_start, Subscription.created_at < day_end).count()
         daily.append({"tanggal": day_start.strftime("%-d %b %Y"), "users": new_users, "pro": up_pro, "business": up_biz})
 
     total_users_month = sum(r["users"] for r in daily)
