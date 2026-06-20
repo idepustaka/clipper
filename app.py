@@ -215,12 +215,7 @@ def run_clip_job(job_id, url, segments, user_id):
             })
             jobs[job_id]["progress"] = 60 + int(38 * (i + 1) / total)
 
-        # Catat usage
-        with app.app_context():
-            user = User.query.get(user_id)
-            if user:
-                user.clips_used += len(segments)
-                db.session.commit()
+        # Kuota dipotong saat download, bukan saat clip dibuat
 
         source.unlink(missing_ok=True)
         jobs[job_id]["status"] = "done"
@@ -364,12 +359,6 @@ def detect_goals_worker(job_id, url, before_sec, after_sec, user_id):
             })
             jobs[job_id]["progress"] = 75 + int(23 * (i+1) / len(spikes))
 
-        with app.app_context():
-            user = User.query.get(user_id)
-            if user:
-                user.clips_used += len(jobs[job_id]["clips"])
-                db.session.commit()
-
         source.unlink(missing_ok=True)
         jobs[job_id]["status"] = "done"
         jobs[job_id]["progress"] = 100
@@ -432,6 +421,10 @@ def download_clip(filename):
     path = CLIPS_DIR / filename
     if not path.exists():
         return jsonify({"error": "File tidak ditemukan"}), 404
+    if not current_user.can_clip():
+        return jsonify({"error": "Kuota clip habis. Upgrade untuk clip lebih banyak."}), 403
+    current_user.clips_used += 1
+    db.session.commit()
     return send_file(path, as_attachment=True)
 
 @app.route("/api/clips")
