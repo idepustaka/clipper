@@ -456,7 +456,7 @@ def _check_subscription_expired(user):
             if now > valid:
                 active_sub.status = "expired"
                 user.tier = "free"
-                user.clips_used = 0
+                user.clips_used = 9999  # blokir akses free sampai perpanjang
                 db.session.commit()
                 # Kirim notif WA expired
                 fonnte_token = app.config.get("FONNTE_TOKEN", "")
