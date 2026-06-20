@@ -89,13 +89,31 @@
   <!-- Rekap Statistik -->
   <div class="section">
     <h2>Rekap Statistik</h2>
-    <table>
+
+    <!-- Filter tanggal -->
+    <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:16px;">
+      <div>
+        <label style="font-size:0.75rem;color:#666;display:block;margin-bottom:4px;">Dari Tanggal</label>
+        <input type="date" id="filter-from" class="search" style="width:auto;" />
+      </div>
+      <div>
+        <label style="font-size:0.75rem;color:#666;display:block;margin-bottom:4px;">Sampai Tanggal</label>
+        <input type="date" id="filter-to" class="search" style="width:auto;" />
+      </div>
+      <div style="align-self:flex-end;">
+        <button onclick="filterRekap()" style="background:linear-gradient(135deg,#ff4444,#ff8c00);border:none;border-radius:8px;color:#fff;padding:10px 20px;font-size:0.85rem;font-weight:700;cursor:pointer;">Tampilkan</button>
+      </div>
+    </div>
+
+    <!-- Tabel rekap default -->
+    <table id="rekap-table">
       <thead>
         <tr>
           <th>Periode</th>
           <th>Pendaftar Baru</th>
           <th>Upgrade Pro</th>
           <th>Upgrade Business</th>
+          <th>Total Omzet</th>
         </tr>
       </thead>
       <tbody>
@@ -104,21 +122,35 @@
           <td>{{ rekap.hari.users }}</td>
           <td>{{ rekap.hari.pro }}</td>
           <td>{{ rekap.hari.business }}</td>
+          <td class="revenue">Rp {{ "{:,.0f}".format(rekap.hari.pro * 99000 + rekap.hari.business * 299000) }}</td>
         </tr>
         <tr>
           <td><strong>Bulan Ini</strong></td>
           <td>{{ rekap.bulan.users }}</td>
           <td>{{ rekap.bulan.pro }}</td>
           <td>{{ rekap.bulan.business }}</td>
+          <td class="revenue">Rp {{ "{:,.0f}".format(rekap.bulan.pro * 99000 + rekap.bulan.business * 299000) }}</td>
         </tr>
         <tr>
           <td><strong>Tahun Ini</strong></td>
           <td>{{ rekap.tahun.users }}</td>
           <td>{{ rekap.tahun.pro }}</td>
           <td>{{ rekap.tahun.business }}</td>
+          <td class="revenue">Rp {{ "{:,.0f}".format(rekap.tahun.pro * 99000 + rekap.tahun.business * 299000) }}</td>
         </tr>
       </tbody>
     </table>
+
+    <!-- Hasil filter custom -->
+    <div id="filter-result" style="display:none;margin-top:16px;">
+      <h2 id="filter-title"></h2>
+      <table>
+        <thead>
+          <tr><th>Periode</th><th>Pendaftar Baru</th><th>Upgrade Pro</th><th>Upgrade Business</th><th>Total Omzet</th></tr>
+        </thead>
+        <tbody id="filter-tbody"></tbody>
+      </table>
+    </div>
   </div>
 
   <!-- Grafik 30 Hari -->
@@ -228,6 +260,25 @@ new Chart(ctx, {
     }
   }
 });
+
+async function filterRekap() {
+  const from = document.getElementById('filter-from').value;
+  const to = document.getElementById('filter-to').value;
+  if (!from || !to) { alert('Pilih tanggal dari dan sampai'); return; }
+  const resp = await fetch(`/admin/stats?from=${from}&to=${to}`);
+  const data = await resp.json();
+  const omzet = data.pro * 99000 + data.business * 299000;
+  document.getElementById('filter-title').textContent = `Hasil: ${from} s/d ${to}`;
+  document.getElementById('filter-tbody').innerHTML = `
+    <tr>
+      <td><strong>${from} s/d ${to}</strong></td>
+      <td>${data.users}</td>
+      <td>${data.pro}</td>
+      <td>${data.business}</td>
+      <td style="color:#4caf50;font-weight:600;">Rp ${omzet.toLocaleString('id-ID')}</td>
+    </tr>`;
+  document.getElementById('filter-result').style.display = 'block';
+}
 
 function filterTable(tableId, query) {
   const q = query.toLowerCase();

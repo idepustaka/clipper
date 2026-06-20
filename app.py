@@ -139,6 +139,25 @@ def admin():
                            chart_users=chart_users, chart_pro=chart_pro, chart_business=chart_business)
 
 
+@app.route("/admin/stats")
+@login_required
+def admin_stats():
+    if current_user.email != "idepustaka@gmail.com":
+        return jsonify({"error": "Unauthorized"}), 403
+    from_str = request.args.get("from", "")
+    to_str = request.args.get("to", "")
+    try:
+        from_dt = datetime.strptime(from_str, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+        to_dt = datetime.strptime(to_str, "%Y-%m-%d").replace(hour=23, minute=59, second=59, tzinfo=timezone.utc)
+    except ValueError:
+        return jsonify({"error": "Format tanggal salah"}), 400
+    users = User.query.filter(User.created_at >= from_dt, User.created_at <= to_dt).count()
+    pro = Subscription.query.filter(Subscription.tier == "pro", Subscription.created_at >= from_dt, Subscription.created_at <= to_dt).count()
+    business = Subscription.query.filter(Subscription.tier == "business", Subscription.created_at >= from_dt, Subscription.created_at <= to_dt).count()
+    omzet = pro * 99000 + business * 299000
+    return jsonify({"users": users, "pro": pro, "business": business, "omzet": omzet})
+
+
 @app.route("/admin/activate", methods=["POST"])
 @login_required
 def admin_activate():
