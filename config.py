@@ -21,5 +21,8 @@ class Config:
     # Xendit
     XENDIT_SECRET_KEY = os.environ.get("XENDIT_SECRET_KEY", "")
 
+    # Fonnte WhatsApp
+    FONNTE_TOKEN = os.environ.get("FONNTE_TOKEN", "")
+
     # App
     APP_URL = os.environ.get("APP_URL", "http://127.0.0.1:5001")

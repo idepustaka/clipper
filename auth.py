@@ -1,9 +1,27 @@
+import threading
+import requests as http_requests
+
 from flask import Blueprint, jsonify, redirect, render_template, request, url_for
 from flask_login import login_required, login_user, logout_user, current_user
 
 from models import User, db
 
 auth = Blueprint("auth", __name__)
+
+
+def send_wa(phone, message, token):
+    try:
+        phone = phone.strip().replace("+", "").replace("-", "").replace(" ", "")
+        if phone.startswith("0"):
+            phone = "62" + phone[1:]
+        http_requests.post(
+            "https://api.fonnte.com/send",
+            headers={"Authorization": token},
+            data={"target": phone, "message": message},
+            timeout=10,
+        )
+    except Exception:
+        pass
 
 
 @auth.route("/register", methods=["GET", "POST"])
@@ -29,6 +47,20 @@ def register():
         db.session.add(user)
         db.session.commit()
         login_user(user, remember=True)
+
+        # Kirim WA selamat datang jika ada nomor HP
+        from flask import current_app
+        fonnte_token = current_app.config.get("FONNTE_TOKEN", "")
+        if phone and fonnte_token:
+            msg = (
+                f"Halo {name}! 👋\n\n"
+                f"Selamat datang di *YouTube Clipper*! 🎬✂️\n\n"
+                f"Akun kamu sudah aktif dengan *5 clip gratis* per bulan.\n\n"
+                f"Mulai clip video favorit kamu sekarang!\n"
+                f"👉 http://103.13.207.57"
+            )
+            threading.Thread(target=send_wa, args=(phone, msg, fonnte_token), daemon=True).start()
+
         return jsonify({"ok": True, "redirect": "/"})
     return render_template("register.html")
 
