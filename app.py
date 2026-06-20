@@ -457,6 +457,19 @@ def download_clip(filename):
             return jsonify({"error": "Kuota clip habis atau paket sudah berakhir. Upgrade untuk melanjutkan."}), 403
         current_user.clips_used += 1
         db.session.commit()
+        # Kirim WA jika sisa kuota tinggal 5
+        remaining = current_user.remaining_clips()
+        if remaining == 5 and current_user.phone:
+            fonnte_token = app.config.get("FONNTE_TOKEN", "")
+            if fonnte_token:
+                from auth import send_wa
+                msg = (
+                    f"Halo {current_user.name}! ⚠️\n\n"
+                    f"Kuota clip kamu tinggal *5 lagi* bulan ini.\n\n"
+                    f"Upgrade ke Business untuk clip *unlimited*!\n"
+                    f"👉 http://103.13.207.57/pricing"
+                )
+                threading.Thread(target=send_wa, args=(current_user.phone, msg, fonnte_token), daemon=True).start()
     return send_file(path, as_attachment=True)
 
 @app.route("/api/clips")
