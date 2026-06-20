@@ -3,8 +3,9 @@ import re
 import struct
 import subprocess
 import threading
+import time
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from flask import Flask, jsonify, redirect, render_template, request, send_file, url_for
@@ -415,6 +416,35 @@ def user_me():
         "remaining": current_user.remaining_clips(),
     })
 
+def _check_subscription_expired(user):
+    """Turunkan tier ke free jika langganan sudah expired."""
+    if user.tier in ("pro", "business"):
+        active_sub = Subscription.query.filter_by(
+            user_id=user.id, status="active"
+        ).order_by(Subscription.created_at.desc()).first()
+        if active_sub and active_sub.valid_until:
+            now = datetime.now(timezone.utc)
+            valid = active_sub.valid_until
+            if valid.tzinfo is None:
+                valid = valid.replace(tzinfo=timezone.utc)
+            if now > valid:
+                active_sub.status = "expired"
+                user.tier = "free"
+                user.clips_used = 0
+                db.session.commit()
+                # Kirim notif WA expired
+                fonnte_token = app.config.get("FONNTE_TOKEN", "")
+                if user.phone and fonnte_token:
+                    from auth import send_wa
+                    msg = (
+                        f"Halo {user.name}! 😔\n\n"
+                        f"Paket *{active_sub.tier.capitalize()}* kamu sudah berakhir.\n\n"
+                        f"Perpanjang sekarang agar bisa download clip lagi!\n"
+                        f"👉 http://103.13.207.57/pricing"
+                    )
+                    threading.Thread(target=send_wa, args=(user.phone, msg, fonnte_token), daemon=True).start()
+
+
 @app.route("/api/download/<filename>")
 @login_required
 def download_clip(filename):
@@ -422,8 +452,9 @@ def download_clip(filename):
     if not path.exists():
         return jsonify({"error": "File tidak ditemukan"}), 404
     if current_user.email != "idepustaka@gmail.com":
+        _check_subscription_expired(current_user)
         if not current_user.can_clip():
-            return jsonify({"error": "Kuota clip habis. Upgrade untuk clip lebih banyak."}), 403
+            return jsonify({"error": "Kuota clip habis atau paket sudah berakhir. Upgrade untuk melanjutkan."}), 403
         current_user.clips_used += 1
         db.session.commit()
     return send_file(path, as_attachment=True)
@@ -442,6 +473,42 @@ def delete_clip(filename):
     if path.exists():
         path.unlink()
     return jsonify({"ok": True})
+
+
+def _reminder_job():
+    """Kirim WA pengingat 3 hari sebelum langganan expired. Jalan setiap hari."""
+    while True:
+        try:
+            with app.app_context():
+                fonnte_token = app.config.get("FONNTE_TOKEN", "")
+                if fonnte_token:
+                    now = datetime.now(timezone.utc)
+                    soon = now + timedelta(days=3)
+                    subs = Subscription.query.filter_by(status="active").all()
+                    for sub in subs:
+                        if not sub.valid_until:
+                            continue
+                        valid = sub.valid_until
+                        if valid.tzinfo is None:
+                            valid = valid.replace(tzinfo=timezone.utc)
+                        days_left = (valid - now).days
+                        if days_left == 3:
+                            user = User.query.get(sub.user_id)
+                            if user and user.phone:
+                                from auth import send_wa
+                                msg = (
+                                    f"Halo {user.name}! ⏰\n\n"
+                                    f"Paket *{sub.tier.capitalize()}* kamu akan berakhir dalam *3 hari*.\n\n"
+                                    f"Perpanjang sekarang agar tidak terputus!\n"
+                                    f"👉 http://103.13.207.57/pricing"
+                                )
+                                send_wa(user.phone, msg, fonnte_token)
+        except Exception:
+            pass
+        time.sleep(86400)  # cek setiap 24 jam
+
+
+threading.Thread(target=_reminder_job, daemon=True).start()
 
 
 if __name__ == "__main__":
