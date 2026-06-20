@@ -101,14 +101,8 @@
         </tr>
       </thead>
       <tbody>
-        {% set total_users = namespace(v=0) %}
-        {% set total_pro = namespace(v=0) %}
-        {% set total_biz = namespace(v=0) %}
         {% for row in daily %}
         {% set omzet = row.pro * 99000 + row.business * 299000 %}
-        {% set _ = total_users.__setattr__('v', total_users.v + row.users) %}
-        {% set _ = total_pro.__setattr__('v', total_pro.v + row.pro) %}
-        {% set _ = total_biz.__setattr__('v', total_biz.v + row.business) %}
         <tr>
           <td style="color:#444;">{{ loop.index }}</td>
           <td>{{ row.tanggal }}</td>
@@ -122,10 +116,10 @@
       <tfoot>
         <tr style="border-top:2px solid #333;">
           <td colspan="2" style="font-weight:700;color:#fff;">TOTAL</td>
-          <td style="font-weight:700;color:#fff;">{{ total_users.v }}</td>
-          <td style="font-weight:700;color:#fff;">{{ total_pro.v }}</td>
-          <td style="font-weight:700;color:#fff;">{{ total_biz.v }}</td>
-          <td style="font-weight:700;" class="revenue">Rp {{ '{:,.0f}'.format(total_pro.v * 99000 + total_biz.v * 299000) }}</td>
+          <td style="font-weight:700;color:#fff;">{{ total_users_month }}</td>
+          <td style="font-weight:700;color:#fff;">{{ total_pro_month }}</td>
+          <td style="font-weight:700;color:#fff;">{{ total_biz_month }}</td>
+          <td style="font-weight:700;" class="revenue">Rp {{ '{:,.0f}'.format(total_omzet_month) }}</td>
         </tr>
       </tfoot>
     </table>

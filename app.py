@@ -108,9 +108,16 @@ def admin():
         new_users = User.query.filter(User.created_at >= day_start, User.created_at < day_end).count()
         up_pro    = Subscription.query.filter(Subscription.tier == "pro",      Subscription.created_at >= day_start, Subscription.created_at < day_end).count()
         up_biz    = Subscription.query.filter(Subscription.tier == "business", Subscription.created_at >= day_start, Subscription.created_at < day_end).count()
-        daily.append({"tanggal": day_start.strftime("%-d %b %Y"), "users": new_users, "pro": up_pro, "business": up_biz})
+            daily.append({"tanggal": day_start.strftime("%-d %b %Y"), "users": new_users, "pro": up_pro, "business": up_biz})
 
-    return render_template("admin.html", users=users, subs=subs, stats=stats, daily=daily)
+    total_users_month = sum(r["users"] for r in daily)
+    total_pro_month   = sum(r["pro"]   for r in daily)
+    total_biz_month   = sum(r["business"] for r in daily)
+    total_omzet_month = total_pro_month * 99000 + total_biz_month * 299000
+
+    return render_template("admin.html", users=users, subs=subs, stats=stats, daily=daily,
+                           total_users_month=total_users_month, total_pro_month=total_pro_month,
+                           total_biz_month=total_biz_month, total_omzet_month=total_omzet_month)
 
 
 @app.route("/admin/stats")
