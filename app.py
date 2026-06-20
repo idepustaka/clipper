@@ -97,7 +97,20 @@ def admin():
 
     now = datetime.now(timezone.utc)
 
-    return render_template("admin.html", users=users, subs=subs, stats=stats)
+    # Data per hari bulan berjalan
+    today = now.replace(hour=23, minute=59, second=59, microsecond=0)
+    month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    days_in_month = (today.day)
+    daily = []
+    for d in range(1, days_in_month + 1):
+        day_start = month_start.replace(day=d, hour=0, minute=0, second=0, microsecond=0)
+        day_end   = day_start + timedelta(days=1)
+        new_users = User.query.filter(User.created_at >= day_start, User.created_at < day_end).count()
+        up_pro    = Subscription.query.filter(Subscription.tier == "pro",      Subscription.created_at >= day_start, Subscription.created_at < day_end).count()
+        up_biz    = Subscription.query.filter(Subscription.tier == "business", Subscription.created_at >= day_start, Subscription.created_at < day_end).count()
+        daily.append({"tanggal": day_start.strftime("%-d %b %Y"), "users": new_users, "pro": up_pro, "business": up_biz})
+
+    return render_template("admin.html", users=users, subs=subs, stats=stats, daily=daily)
 
 
 @app.route("/admin/stats")

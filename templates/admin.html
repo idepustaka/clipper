@@ -86,35 +86,31 @@
     </div>
   </div>
 
-  <!-- Rekap Statistik -->
+  <!-- Rekap Bulanan -->
   <div class="section">
-    <h2>Rekap Statistik</h2>
-
-    <!-- Filter tanggal -->
-    <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:16px;">
-      <div>
-        <label style="font-size:0.75rem;color:#666;display:block;margin-bottom:4px;">Dari Tanggal</label>
-        <input type="date" id="filter-from" class="search" style="width:auto;" />
-      </div>
-      <div>
-        <label style="font-size:0.75rem;color:#666;display:block;margin-bottom:4px;">Sampai Tanggal</label>
-        <input type="date" id="filter-to" class="search" style="width:auto;" />
-      </div>
-      <div style="align-self:flex-end;">
-        <button onclick="filterRekap()" style="background:linear-gradient(135deg,#ff4444,#ff8c00);border:none;border-radius:8px;color:#fff;padding:10px 20px;font-size:0.85rem;font-weight:700;cursor:pointer;">Tampilkan</button>
-      </div>
-    </div>
-
-    <!-- Hasil filter custom -->
-    <div id="filter-result" style="display:none;margin-top:16px;">
-      <h2 id="filter-title"></h2>
-      <table>
-        <thead>
-          <tr><th>Periode</th><th>Pendaftar Baru</th><th>Upgrade Pro</th><th>Upgrade Business</th><th>Total Omzet</th></tr>
-        </thead>
-        <tbody id="filter-tbody"></tbody>
-      </table>
-    </div>
+    <h2>Rekap Bulan Ini</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Tanggal</th>
+          <th>Pendaftar Baru</th>
+          <th>Upgrade Pro</th>
+          <th>Upgrade Business</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in daily %}
+        <tr>
+          <td style="color:#444;">{{ loop.index }}</td>
+          <td>{{ row.tanggal }}</td>
+          <td>{{ row.users if row.users > 0 else '-' }}</td>
+          <td>{{ row.pro if row.pro > 0 else '-' }}</td>
+          <td>{{ row.business if row.business > 0 else '-' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
   </div>
 
   <!-- Daftar Pengguna -->
