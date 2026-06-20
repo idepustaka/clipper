@@ -1,5 +1,6 @@
 import threading
 import time
+import random
 import requests as http_requests
 
 from flask import Blueprint, jsonify, redirect, render_template, request, url_for
@@ -116,3 +117,59 @@ def login():
 def logout():
     logout_user()
     return redirect(url_for("auth.login"))
+
+
+# OTP store: {phone_normalized: (otp, expired_at)}
+_otp_store = {}
+
+@auth.route("/forgot-password", methods=["GET", "POST"])
+def forgot_password():
+    if request.method == "GET":
+        return render_template("forgot_password.html")
+    data = request.json or {}
+    phone = (data.get("phone") or "").strip().replace("+", "").replace("-", "").replace(" ", "")
+    if phone.startswith("0"):
+        phone = "62" + phone[1:]
+    if not phone:
+        return jsonify({"error": "Nomor HP wajib diisi"}), 400
+    user = User.query.filter(User.phone.like(f"%{phone[-9:]}")).first()
+    if not user:
+        return jsonify({"error": "Nomor HP tidak ditemukan"}), 404
+    otp = str(random.randint(100000, 999999))
+    _otp_store[phone] = (otp, time.time() + 600)  # valid 10 menit
+    from flask import current_app
+    fonnte_token = current_app.config.get("FONNTE_TOKEN", "")
+    if fonnte_token:
+        msg = f"Kode OTP reset password YouTube Clipper kamu:\n\n*{otp}*\n\nKode berlaku 10 menit. Jangan berikan ke siapapun!"
+        threading.Thread(target=send_wa, args=(phone, msg, fonnte_token), daemon=True).start()
+    return jsonify({"ok": True})
+
+
+@auth.route("/reset-password", methods=["POST"])
+def reset_password():
+    data = request.json or {}
+    phone = (data.get("phone") or "").strip().replace("+", "").replace("-", "").replace(" ", "")
+    if phone.startswith("0"):
+        phone = "62" + phone[1:]
+    otp = data.get("otp", "").strip()
+    pw = data.get("password", "")
+    if not phone or not otp or not pw:
+        return jsonify({"error": "Data tidak lengkap"}), 400
+    if len(pw) < 6:
+        return jsonify({"error": "Password minimal 6 karakter"}), 400
+    stored = _otp_store.get(phone)
+    if not stored:
+        return jsonify({"error": "Kode OTP tidak valid"}), 400
+    stored_otp, expired_at = stored
+    if time.time() > expired_at:
+        _otp_store.pop(phone, None)
+        return jsonify({"error": "Kode OTP sudah kadaluarsa"}), 400
+    if otp != stored_otp:
+        return jsonify({"error": "Kode OTP salah"}), 400
+    user = User.query.filter(User.phone.like(f"%{phone[-9:]}")).first()
+    if not user:
+        return jsonify({"error": "User tidak ditemukan"}), 404
+    user.set_password(pw)
+    db.session.commit()
+    _otp_store.pop(phone, None)
+    return jsonify({"ok": True})
