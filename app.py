@@ -156,6 +156,10 @@ def admin_activate():
         return jsonify({"error": "User tidak ditemukan"}), 404
     user.tier = tier
     user.clips_used = 0
+    user.quota_exhausted_at = None
+    user.quota_reminder_count = 0
+    user.expired_at = None
+    user.expired_reminder_count = 0
     if tier != "free":
         sub = Subscription(
             user_id=user.id, gateway="manual", order_id=f"MANUAL-{tier.upper()}-{uuid.uuid4().hex[:8].upper()}",
@@ -537,6 +541,8 @@ def _check_subscription_expired(user):
                 active_sub.status = "expired"
                 user.tier = "free"
                 user.clips_used = 9999  # blokir akses free sampai perpanjang
+                user.expired_at = datetime.now(timezone.utc)
+                user.expired_reminder_count = 0
                 db.session.commit()
                 # Kirim notif WA expired
                 fonnte_token = app.config.get("FONNTE_TOKEN", "")
@@ -562,6 +568,10 @@ def download_clip(filename):
         if not current_user.can_clip():
             return jsonify({"error": "Kuota clip habis atau paket sudah berakhir. Upgrade untuk melanjutkan."}), 403
         current_user.clips_used += 1
+        # Set quota_exhausted_at saat kuota habis
+        if not current_user.can_clip() and not current_user.quota_exhausted_at:
+            current_user.quota_exhausted_at = datetime.now(timezone.utc)
+            current_user.quota_reminder_count = 0
         db.session.commit()
         # Kirim WA jika sisa kuota tinggal 5
         remaining = current_user.remaining_clips()
@@ -594,34 +604,108 @@ def delete_clip(filename):
     return jsonify({"ok": True})
 
 
+REMINDER_DAYS = [1, 3, 7, 14, 30]
+
+def _send_reminder(user, msg, fonnte_token):
+    from auth import send_wa
+    send_wa(user.phone, msg, fonnte_token)
+
 def _reminder_job():
-    """Kirim WA pengingat 3 hari sebelum langganan expired. Jalan setiap hari."""
+    """Kirim WA pengingat expired & kuota habis. Jalan setiap hari."""
     while True:
         try:
             with app.app_context():
                 fonnte_token = app.config.get("FONNTE_TOKEN", "")
-                if fonnte_token:
-                    now = datetime.now(timezone.utc)
-                    soon = now + timedelta(days=3)
-                    subs = Subscription.query.filter_by(status="active").all()
-                    for sub in subs:
-                        if not sub.valid_until:
-                            continue
-                        valid = sub.valid_until
-                        if valid.tzinfo is None:
-                            valid = valid.replace(tzinfo=timezone.utc)
-                        days_left = (valid - now).days
-                        if days_left == 3:
-                            user = User.query.get(sub.user_id)
-                            if user and user.phone:
-                                from auth import send_wa
-                                msg = (
-                                    f"Halo {user.name}! ⏰\n\n"
-                                    f"Paket *{sub.tier.capitalize()}* kamu akan berakhir dalam *3 hari*.\n\n"
-                                    f"Perpanjang sekarang agar tidak terputus!\n"
-                                    f"👉 https://youtubeclipper.asia/pricing"
-                                )
-                                send_wa(user.phone, msg, fonnte_token)
+                if not fonnte_token:
+                    time.sleep(86400)
+                    continue
+
+                now = datetime.now(timezone.utc)
+
+                # Pengingat 3 hari sebelum expired
+                subs = Subscription.query.filter_by(status="active").all()
+                for sub in subs:
+                    if not sub.valid_until:
+                        continue
+                    valid = sub.valid_until
+                    if valid.tzinfo is None:
+                        valid = valid.replace(tzinfo=timezone.utc)
+                    if (valid - now).days == 3:
+                        user = User.query.get(sub.user_id)
+                        if user and user.phone:
+                            msg = (
+                                f"Halo {user.name}! ⏰\n\n"
+                                f"Paket *{sub.tier.capitalize()}* kamu akan berakhir dalam *3 hari*.\n\n"
+                                f"Perpanjang sekarang agar tidak terputus!\n"
+                                f"👉 https://youtubeclipper.asia/pricing"
+                            )
+                            _send_reminder(user, msg, fonnte_token)
+
+                # Reminder kuota habis (free & pro)
+                users = User.query.filter(User.quota_exhausted_at.isnot(None)).all()
+                for user in users:
+                    if not user.phone:
+                        continue
+                    if user.quota_reminder_count >= len(REMINDER_DAYS):
+                        continue
+                    exhausted = user.quota_exhausted_at
+                    if exhausted.tzinfo is None:
+                        exhausted = exhausted.replace(tzinfo=timezone.utc)
+                    days_since = (now - exhausted).days
+                    target_day = REMINDER_DAYS[user.quota_reminder_count]
+                    if days_since >= target_day:
+                        if user.tier == "free":
+                            msg = (
+                                f"Halo {user.name}! 🎬\n\n"
+                                f"Kuota *5 clip gratis* kamu sudah habis bulan ini.\n\n"
+                                f"Upgrade ke *Pro* (30 clip/bln) atau *Business* (unlimited) untuk terus download!\n"
+                                f"👉 https://youtubeclipper.asia/pricing"
+                            )
+                        else:  # pro
+                            msg = (
+                                f"Halo {user.name}! 🎬\n\n"
+                                f"Kuota *30 clip Pro* kamu sudah habis bulan ini.\n\n"
+                                f"Upgrade ke *Business* untuk clip *unlimited*!\n"
+                                f"👉 https://youtubeclipper.asia/pricing"
+                            )
+                        _send_reminder(user, msg, fonnte_token)
+                        user.quota_reminder_count += 1
+                        db.session.commit()
+
+                # Reminder expired (pro & business)
+                expired_users = User.query.filter(User.expired_at.isnot(None)).all()
+                for user in expired_users:
+                    if not user.phone:
+                        continue
+                    if user.expired_reminder_count >= len(REMINDER_DAYS):
+                        continue
+                    expired = user.expired_at
+                    if expired.tzinfo is None:
+                        expired = expired.replace(tzinfo=timezone.utc)
+                    days_since = (now - expired).days
+                    target_day = REMINDER_DAYS[user.expired_reminder_count]
+                    if days_since >= target_day:
+                        # Cek tier terakhir dari subscription
+                        last_sub = Subscription.query.filter_by(user_id=user.id).order_by(Subscription.created_at.desc()).first()
+                        last_tier = last_sub.tier if last_sub else "pro"
+                        if last_tier == "business":
+                            msg = (
+                                f"Halo {user.name}! ⚠️\n\n"
+                                f"Paket *Business* kamu sudah berakhir.\n\n"
+                                f"Perpanjang *Business* (unlimited) atau turun ke *Pro* (30 clip/bln).\n"
+                                f"👉 https://youtubeclipper.asia/pricing"
+                            )
+                        else:
+                            msg = (
+                                f"Halo {user.name}! ⚠️\n\n"
+                                f"Paket *Pro* kamu sudah berakhir.\n\n"
+                                f"Perpanjang *Pro* (30 clip/bln) atau upgrade ke *Business* (unlimited)!\n"
+                                f"👉 https://youtubeclipper.asia/pricing"
+                            )
+                        _send_reminder(user, msg, fonnte_token)
+                        user.expired_reminder_count += 1
+                        db.session.commit()
+
         except Exception:
             pass
         time.sleep(86400)  # cek setiap 24 jam

@@ -19,10 +19,14 @@ class User(UserMixin, db.Model):
     phone         = db.Column(db.String(20), nullable=True)
     password_hash = db.Column(db.String(256), nullable=False)
     tier          = db.Column(db.String(20), default="free")
-    clips_used    = db.Column(db.Integer, default=0)
-    cycle_start   = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
-    created_at    = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
-    subscriptions = db.relationship("Subscription", backref="user", lazy=True)
+    clips_used              = db.Column(db.Integer, default=0)
+    cycle_start             = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at              = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    quota_exhausted_at      = db.Column(db.DateTime, nullable=True)
+    quota_reminder_count    = db.Column(db.Integer, default=0)
+    expired_at              = db.Column(db.DateTime, nullable=True)
+    expired_reminder_count  = db.Column(db.Integer, default=0)
+    subscriptions           = db.relationship("Subscription", backref="user", lazy=True)
 
     def set_password(self, pw):
         self.password_hash = generate_password_hash(pw)
