@@ -86,6 +86,17 @@ def register():
             )
             threading.Thread(target=send_wa, args=(phone, msg, fonnte_token), daemon=True).start()
 
+        # Notif ke admin
+        if fonnte_token:
+            admin_phone = "82137481104"
+            admin_msg = (
+                f"👤 *User Baru Daftar!*\n\n"
+                f"Nama: {name}\n"
+                f"Email: {email}\n"
+                f"No. HP: {phone if phone else '-'}"
+            )
+            threading.Thread(target=send_wa, args=(admin_phone, admin_msg, fonnte_token), daemon=True).start()
+
         return jsonify({"ok": True, "redirect": "/"})
     return render_template("register.html")
 
