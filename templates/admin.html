@@ -184,38 +184,6 @@
     </table>
   </div>
 
-  <!-- Riwayat Transaksi -->
-  <div class="section">
-    <h2>Transaksi Pembayaran</h2>
-    <table>
-      <thead>
-        <tr>
-          <th>Order ID</th>
-          <th>Pengguna</th>
-          <th>Tier</th>
-          <th>Jumlah</th>
-          <th>Gateway</th>
-          <th>Status</th>
-          <th>Tanggal</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for s in subs %}
-        <tr>
-          <td style="color:#555;font-size:0.75rem;">{{ s.order_id }}</td>
-          <td>{{ s.user.email if s.user else '-' }}</td>
-          <td><span class="badge badge-{{ s.tier }}">{{ s.tier }}</span></td>
-          <td class="revenue">Rp {{ "{:,.0f}".format(s.amount) if s.currency == 'IDR' else '$' + "{}".format(s.amount // 100) }}</td>
-          <td style="color:#666;">{{ s.gateway }}</td>
-          <td><span class="badge badge-{{ s.status }}">{{ s.status }}</span></td>
-          <td style="color:#555;">{{ s.created_at.strftime('%d %b %Y') if s.created_at else '-' }}</td>
-        </tr>
-        {% else %}
-        <tr><td colspan="7" class="empty">Belum ada transaksi</td></tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
 </div>
 
 <script>
