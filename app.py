@@ -605,10 +605,23 @@ def delete_clip(filename):
 
 
 REMINDER_DAYS = [1, 3, 7, 14, 30]
+REMINDER_BATCH_SIZE = 50   # kirim max 50 WA per menit
+REMINDER_BATCH_DELAY = 60  # detik jeda antar batch
 
 def _send_reminder(user, msg, fonnte_token):
     from auth import send_wa
     send_wa(user.phone, msg, fonnte_token)
+
+def _send_batch(queue, fonnte_token):
+    """Kirim WA bertahap, 50 pesan per menit."""
+    from auth import send_wa
+    for i, (phone, msg) in enumerate(queue):
+        if i > 0 and i % REMINDER_BATCH_SIZE == 0:
+            time.sleep(REMINDER_BATCH_DELAY)
+        try:
+            send_wa(phone, msg, fonnte_token)
+        except Exception:
+            pass
 
 def _reminder_job():
     """Kirim WA pengingat expired & kuota habis. Jalan setiap hari."""
@@ -621,6 +634,7 @@ def _reminder_job():
                     continue
 
                 now = datetime.now(timezone.utc)
+                queue = []  # antrian (phone, msg)
 
                 # Pengingat 3 hari sebelum expired
                 subs = Subscription.query.filter_by(status="active").all()
@@ -639,7 +653,7 @@ def _reminder_job():
                                 f"Perpanjang sekarang agar tidak terputus!\n"
                                 f"👉 https://youtubeclipper.asia/pricing"
                             )
-                            _send_reminder(user, msg, fonnte_token)
+                            queue.append((user.phone, msg))
 
                 # Reminder kuota habis (free & pro)
                 users = User.query.filter(User.quota_exhausted_at.isnot(None)).all()
@@ -661,14 +675,14 @@ def _reminder_job():
                                 f"Upgrade ke *Pro* (30 clip/bln) atau *Business* (unlimited) untuk terus download!\n"
                                 f"👉 https://youtubeclipper.asia/pricing"
                             )
-                        else:  # pro
+                        else:
                             msg = (
                                 f"Halo {user.name}! 🎬\n\n"
                                 f"Kuota *30 clip Pro* kamu sudah habis bulan ini.\n\n"
                                 f"Upgrade ke *Business* untuk clip *unlimited*!\n"
                                 f"👉 https://youtubeclipper.asia/pricing"
                             )
-                        _send_reminder(user, msg, fonnte_token)
+                        queue.append((user.phone, msg))
                         user.quota_reminder_count += 1
                         db.session.commit()
 
@@ -685,7 +699,6 @@ def _reminder_job():
                     days_since = (now - expired).days
                     target_day = REMINDER_DAYS[user.expired_reminder_count]
                     if days_since >= target_day:
-                        # Cek tier terakhir dari subscription
                         last_sub = Subscription.query.filter_by(user_id=user.id).order_by(Subscription.created_at.desc()).first()
                         last_tier = last_sub.tier if last_sub else "pro"
                         if last_tier == "business":
@@ -702,9 +715,13 @@ def _reminder_job():
                                 f"Perpanjang *Pro* (30 clip/bln) atau upgrade ke *Business* (unlimited)!\n"
                                 f"👉 https://youtubeclipper.asia/pricing"
                             )
-                        _send_reminder(user, msg, fonnte_token)
+                        queue.append((user.phone, msg))
                         user.expired_reminder_count += 1
                         db.session.commit()
+
+                # Kirim semua WA bertahap (50 per menit)
+                if queue:
+                    threading.Thread(target=_send_batch, args=(queue, fonnte_token), daemon=True).start()
 
         except Exception:
             pass
