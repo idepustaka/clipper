@@ -76,7 +76,16 @@
         <span class="tier-badge tier-{{ user.tier }}">{{ user.tier_info().name }}</span>
       </div>
       <div class="stat-sub">
-        {% if user.tier == 'free' %}Upgrade untuk lebih banyak clip{% else %}Aktif hingga 30 hari dari aktivasi{% endif %}
+        {% if user.tier == 'free' %}
+          Upgrade untuk lebih banyak clip
+        {% else %}
+          {% set active_sub = subs | selectattr('status', 'equalto', 'active') | first %}
+          {% if active_sub and active_sub.valid_until %}
+            Aktif hingga <strong style="color:#e8e8e8;">{{ active_sub.valid_until.strftime('%d %b %Y') }}</strong>
+          {% else %}
+            Aktif
+          {% endif %}
+        {% endif %}
       </div>
     </div>
 
