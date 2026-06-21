@@ -164,6 +164,9 @@ def admin_activate():
     user.quota_reminder_count = 0
     user.expired_at = None
     user.expired_reminder_count = 0
+    # Cancel semua pending subscription user ini
+    for ps in Subscription.query.filter_by(user_id=user.id, status="pending").all():
+        ps.status = "cancelled"
     if tier != "free":
         sub = Subscription(
             user_id=user.id, gateway="manual", order_id=f"MANUAL-{tier.upper()}-{uuid.uuid4().hex[:8].upper()}",
