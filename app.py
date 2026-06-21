@@ -108,8 +108,8 @@ def admin():
         day_end   = day_start + timedelta(days=1)
         new_users = User.query.filter(User.created_at >= day_start, User.created_at < day_end).count()
         admin_id  = User.query.filter_by(email="idepustaka@gmail.com").with_entities(User.id).scalar()
-        up_pro    = Subscription.query.filter(Subscription.tier == "pro",      Subscription.user_id != admin_id, Subscription.created_at >= day_start, Subscription.created_at < day_end).count()
-        up_biz    = Subscription.query.filter(Subscription.tier == "business", Subscription.user_id != admin_id, Subscription.created_at >= day_start, Subscription.created_at < day_end).count()
+        up_pro    = Subscription.query.filter(Subscription.tier == "pro",      Subscription.status == "active", Subscription.user_id != admin_id, Subscription.created_at >= day_start, Subscription.created_at < day_end).count()
+        up_biz    = Subscription.query.filter(Subscription.tier == "business", Subscription.status == "active", Subscription.user_id != admin_id, Subscription.created_at >= day_start, Subscription.created_at < day_end).count()
         daily.append({"tanggal": day_start.strftime("%-d %b %Y"), "users": new_users, "pro": up_pro, "business": up_biz})
 
     total_users_month = sum(r["users"] for r in daily)
@@ -117,9 +117,13 @@ def admin():
     total_biz_month   = sum(r["business"] for r in daily)
     total_omzet_month = total_pro_month * 99000 + total_biz_month * 299000
 
+    # Pending subscription per user (untuk info nominal di tabel pengguna)
+    pending_subs = {s.user_id: s for s in Subscription.query.filter_by(status="pending", gateway="manual").all()}
+
     return render_template("admin.html", users=users, subs=subs, stats=stats, daily=daily,
                            total_users_month=total_users_month, total_pro_month=total_pro_month,
-                           total_biz_month=total_biz_month, total_omzet_month=total_omzet_month)
+                           total_biz_month=total_biz_month, total_omzet_month=total_omzet_month,
+                           pending_subs=pending_subs)
 
 
 @app.route("/admin/stats")

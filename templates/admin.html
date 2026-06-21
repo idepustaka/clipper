@@ -128,7 +128,14 @@
   <!-- Daftar Pengguna -->
   <div class="section">
     <h2>Pengguna</h2>
-    <input class="search" type="text" id="user-search" placeholder="Cari nama atau email..." onkeyup="filterTable('user-table', this.value)">
+    <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;margin-bottom:16px;">
+      <input class="search" type="text" id="user-search" placeholder="Cari nama atau email..." onkeyup="filterUserTable()" style="margin-bottom:0;">
+      <div>
+        <label style="font-size:0.72rem;color:#666;display:block;margin-bottom:4px;">Filter Tanggal Daftar</label>
+        <input type="date" id="filter-date" class="search" style="width:auto;margin-bottom:0;" onchange="filterUserTable()">
+      </div>
+      <button onclick="document.getElementById('filter-date').value='';filterUserTable();" style="background:#1e1e1e;border:1px solid #333;color:#888;padding:10px 16px;border-radius:8px;font-size:0.82rem;cursor:pointer;">Reset</button>
+    </div>
     <table id="user-table">
       <thead>
         <tr>
@@ -138,13 +145,15 @@
           <th>No. HP</th>
           <th>Tier</th>
           <th>Clip Dipakai</th>
+          <th>Pending Bayar</th>
           <th>Daftar</th>
           <th>Aksi</th>
         </tr>
       </thead>
       <tbody>
         {% for u in users %}
-        <tr>
+        {% set ps = pending_subs.get(u.id) %}
+        <tr data-date="{{ u.created_at.strftime('%Y-%m-%d') if u.created_at else '' }}">
           <td style="color:#444;">{{ u.id }}</td>
           <td>{{ u.name }}</td>
           <td style="color:#888;">{{ u.email }}</td>
@@ -154,6 +163,12 @@
             {% if u.clips_used >= 9999 %}<span class="badge badge-expired" style="margin-left:4px;">expired</span>{% endif %}
           </td>
           <td>{{ u.clips_used }}</td>
+          <td>
+            {% if ps %}
+              <span style="color:#f0c040;font-weight:600;font-size:0.8rem;">Rp {{ '{:,.0f}'.format(ps.amount) }}</span>
+              <span style="color:#555;font-size:0.72rem;display:block;">kode: {{ ps.unique_code }} · {{ ps.tier }}</span>
+            {% else %}-{% endif %}
+          </td>
           <td style="color:#555;">{{ u.created_at.strftime('%d %b %Y') if u.created_at else '-' }}</td>
           <td style="white-space:nowrap;">
             <button onclick="aktivasi({{ u.id }}, 'pro')" style="background:#1a2a1a;color:#4caf50;border:1px solid #2a4a2a;border-radius:6px;padding:4px 10px;font-size:0.75rem;cursor:pointer;margin-right:4px;">Pro</button>
@@ -163,7 +178,7 @@
           </td>
         </tr>
         {% else %}
-        <tr><td colspan="6" class="empty">Belum ada pengguna</td></tr>
+        <tr><td colspan="9" class="empty">Belum ada pengguna</td></tr>
         {% endfor %}
       </tbody>
     </table>
@@ -223,10 +238,13 @@ async function filterRekap() {
   document.getElementById('filter-result').style.display = 'block';
 }
 
-function filterTable(tableId, query) {
-  const q = query.toLowerCase();
-  document.querySelectorAll('#' + tableId + ' tbody tr').forEach(row => {
-    row.style.display = row.textContent.toLowerCase().includes(q) ? '' : 'none';
+function filterUserTable() {
+  const q = document.getElementById('user-search').value.toLowerCase();
+  const d = document.getElementById('filter-date').value;
+  document.querySelectorAll('#user-table tbody tr').forEach(row => {
+    const matchText = row.textContent.toLowerCase().includes(q);
+    const matchDate = !d || row.dataset.date === d;
+    row.style.display = matchText && matchDate ? '' : 'none';
   });
 }
 
