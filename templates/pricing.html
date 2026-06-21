@@ -138,11 +138,16 @@
   </div>
 </div>
 
+<!-- Modal Loading -->
+<div class="modal-overlay" id="modal-loading" style="display:none;position:fixed;inset:0;background:#000a;z-index:999;display:none;align-items:center;justify-content:center;">
+  <div style="color:#fff;font-size:1rem;">Membuat kode unik...</div>
+</div>
+
 <!-- Modal Pembayaran Transfer Bank -->
 <div class="modal-overlay" id="modal">
   <div class="modal">
     <h2 id="modal-title">Upgrade Paket</h2>
-    <p id="modal-desc" style="margin-bottom:20px;"></p>
+    <p id="modal-desc" style="color:#888;font-size:0.9rem;margin-bottom:20px;"></p>
 
     <div style="background:#0a0a0a;border:1px solid #2a2a2a;border-radius:12px;padding:20px;margin-bottom:16px;">
       <div style="font-size:0.75rem;color:#666;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:12px;font-weight:700;">Transfer ke Rekening</div>
@@ -153,16 +158,23 @@
           <div style="color:#888;font-size:0.85rem;">IDE PUSTAKA SETIAWAN</div>
         </div>
       </div>
-      <div style="display:flex;align-items:center;justify-content:space-between;background:#111;border:1px solid #222;border-radius:8px;padding:12px 16px;">
-        <span style="font-size:1.1rem;font-weight:700;letter-spacing:0.05em;" id="rekening-number">0372470966</span>
-        <button onclick="copyRekening()" id="btn-copy-rek" style="background:#1e1e1e;border:1px solid #333;color:#ccc;padding:6px 14px;border-radius:6px;font-size:0.8rem;cursor:pointer;">📋 Salin</button>
+      <div style="display:flex;align-items:center;justify-content:space-between;background:#111;border:1px solid #222;border-radius:8px;padding:12px 16px;margin-bottom:12px;">
+        <span style="font-size:1.1rem;font-weight:700;letter-spacing:0.05em;">0372470966</span>
+        <button onclick="copyText('0372470966', this)" style="background:#1e1e1e;border:1px solid #333;color:#ccc;padding:6px 14px;border-radius:6px;font-size:0.8rem;cursor:pointer;">📋 Salin</button>
+      </div>
+      <div style="background:#111;border:1px solid #2a2a2a;border-radius:8px;padding:14px 16px;">
+        <div style="font-size:0.75rem;color:#666;margin-bottom:6px;">Nominal Transfer (sudah termasuk kode unik)</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+          <span id="modal-amount" style="font-size:1.3rem;font-weight:800;color:#4cde87;"></span>
+          <button onclick="copyAmount()" id="btn-copy-amount" style="background:#1e1e1e;border:1px solid #333;color:#ccc;padding:6px 14px;border-radius:6px;font-size:0.8rem;cursor:pointer;">📋 Salin</button>
+        </div>
+        <div style="font-size:0.78rem;color:#666;margin-top:6px;">Kode unik: <strong style="color:#ff8c00;" id="modal-code"></strong> (3 digit terakhir)</div>
       </div>
     </div>
 
     <div style="background:#1a1a0a;border:1px solid #3a3a1a;border-radius:10px;padding:14px 16px;margin-bottom:16px;font-size:0.85rem;color:#c0b060;line-height:1.6;">
-      ⚠️ Setelah transfer, hubungi admin via WhatsApp untuk konfirmasi dan aktivasi paket kamu.
-      <br><br>
-      <a href="https://wa.me/6282137481104" target="_blank" style="color:#25d366;font-weight:700;text-decoration:none;">💬 Chat Admin WhatsApp →</a>
+      ⚠️ Transfer nominal <strong>persis</strong> termasuk 3 digit kode unik. Kode berlaku <strong>24 jam</strong>.
+      <br><br>Detail sudah dikirim ke WhatsApp kamu.
     </div>
 
     <button class="modal-close" onclick="closeModal()">Tutup</button>
@@ -170,7 +182,7 @@
 </div>
 
 <script>
-  let selectedTier = null;
+  let selectedAmount = 0;
 
   function setCurrency(cur) {
     const isIDR = cur === 'IDR';
@@ -180,14 +192,23 @@
     document.getElementById('cur-usd').classList.toggle('active', !isIDR);
   }
 
-  function openModal(tier) {
+  async function openModal(tier) {
     {% if not user or not user.is_authenticated %}
       window.location = '/login'; return;
     {% endif %}
-    selectedTier = tier;
-    const label = tier === 'pro' ? 'Pro — Rp 99.000/bulan' : 'Business — Rp 299.000/bulan';
+    document.getElementById('modal-loading').style.display = 'flex';
+    const resp = await fetch('/api/request-upgrade', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({tier})
+    });
+    const data = await resp.json();
+    document.getElementById('modal-loading').style.display = 'none';
+    if (!data.ok) { alert(data.error || 'Gagal membuat kode'); return; }
+    selectedAmount = data.amount;
     document.getElementById('modal-title').textContent = 'Upgrade ke ' + (tier === 'pro' ? 'Pro' : 'Business');
-    document.getElementById('modal-desc').textContent = 'Transfer sebesar ' + (tier === 'pro' ? 'Rp 99.000' : 'Rp 299.000') + ' ke rekening berikut:';
+    document.getElementById('modal-desc').textContent = 'Transfer nominal berikut persis ke rekening BCA kami:';
+    document.getElementById('modal-amount').textContent = 'Rp ' + data.amount.toLocaleString('id-ID');
+    document.getElementById('modal-code').textContent = data.code;
     document.getElementById('modal').classList.add('show');
   }
 
@@ -195,22 +216,25 @@
     document.getElementById('modal').classList.remove('show');
   }
 
-  function copyRekening() {
-    const num = document.getElementById('rekening-number').textContent;
-    const btn = document.getElementById('btn-copy-rek');
+  function copyText(text, btn) {
     const done = () => {
-      btn.textContent = '✅ Disalin!';
-      btn.style.color = '#4cde87';
-      setTimeout(() => { btn.textContent = '📋 Salin'; btn.style.color = '#ccc'; }, 2000);
+      const orig = btn.textContent;
+      btn.textContent = '✅ Disalin!'; btn.style.color = '#4cde87';
+      setTimeout(() => { btn.textContent = orig; btn.style.color = '#ccc'; }, 2000);
     };
     if (navigator.clipboard && window.isSecureContext) {
-      navigator.clipboard.writeText(num).then(done);
+      navigator.clipboard.writeText(text).then(done);
     } else {
       const ta = document.createElement('textarea');
-      ta.value = num; ta.style.position = 'fixed'; ta.style.opacity = '0';
+      ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
       document.body.appendChild(ta); ta.focus(); ta.select();
       document.execCommand('copy'); document.body.removeChild(ta); done();
     }
+  }
+
+  function copyAmount() {
+    const btn = document.getElementById('btn-copy-amount');
+    copyText(String(selectedAmount), btn);
   }
 </script>
 </body>

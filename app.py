@@ -192,6 +192,81 @@ def admin_activate():
     return jsonify({"ok": True})
 
 
+@app.route("/api/request-upgrade", methods=["POST"])
+@login_required
+def request_upgrade():
+    data = request.json or {}
+    tier = data.get("tier")
+    if tier not in ("pro", "business"):
+        return jsonify({"error": "Tier tidak valid"}), 400
+
+    # Batalkan pending lama milik user ini
+    old = Subscription.query.filter_by(user_id=current_user.id, status="pending", gateway="manual").all()
+    for o in old:
+        o.status = "cancelled"
+    db.session.commit()
+
+    # Generate kode unik 3 digit yang belum dipakai user lain yang pending
+    import random
+    used_codes = {s.unique_code for s in Subscription.query.filter_by(status="pending").all() if s.unique_code}
+    attempts = 0
+    while attempts < 100:
+        code = random.randint(100, 999)
+        if code not in used_codes:
+            break
+        attempts += 1
+
+    base_price = 99000 if tier == "pro" else 299000
+    amount = base_price + code
+
+    sub = Subscription(
+        user_id=current_user.id,
+        gateway="manual",
+        order_id=f"MANUAL-{tier.upper()}-{uuid.uuid4().hex[:8].upper()}",
+        tier=tier,
+        amount=amount,
+        unique_code=code,
+        currency="IDR",
+        status="pending",
+        unique_code_expired_at=datetime.now(timezone.utc) + timedelta(hours=24),
+    )
+    db.session.add(sub)
+    db.session.commit()
+
+    # Kirim WA ke user berisi info transfer
+    fonnte_token = app.config.get("FONNTE_TOKEN", "")
+    if current_user.phone and fonnte_token:
+        from auth import send_wa
+        tier_name = "Pro" if tier == "pro" else "Business"
+        msg = (
+            f"Halo {current_user.name}! 🎬\n\n"
+            f"Permintaan upgrade *{tier_name}* kamu sudah diterima.\n\n"
+            f"Silakan transfer ke:\n"
+            f"🏦 BCA *0372470966*\n"
+            f"a/n IDE PUSTAKA SETIAWAN\n\n"
+            f"Nominal: *Rp {amount:,}*\n"
+            f"(termasuk kode unik *{code}*)\n\n"
+            f"⏰ Berlaku 24 jam. Setelah transfer, tunggu konfirmasi aktivasi dari kami.\n\n"
+            f"Info: https://wa.me/6282137481104"
+        )
+        threading.Thread(target=send_wa, args=(current_user.phone, msg, fonnte_token), daemon=True).start()
+
+    # Notif ke admin
+    if fonnte_token:
+        from auth import send_wa
+        admin_msg = (
+            f"💰 *Request Upgrade Baru!*\n\n"
+            f"User: {current_user.name}\n"
+            f"Email: {current_user.email}\n"
+            f"Paket: {tier.capitalize()}\n"
+            f"Nominal: Rp {amount:,}\n"
+            f"Kode unik: *{code}*"
+        )
+        threading.Thread(target=send_wa, args=("82137481104", admin_msg, fonnte_token), daemon=True).start()
+
+    return jsonify({"ok": True, "amount": amount, "code": code, "tier": tier})
+
+
 @app.route("/admin/delete-user", methods=["POST"])
 @login_required
 def admin_delete_user():

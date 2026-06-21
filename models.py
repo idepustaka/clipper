@@ -54,13 +54,15 @@ class User(UserMixin, db.Model):
 
 
 class Subscription(db.Model):
-    id              = db.Column(db.Integer, primary_key=True)
-    user_id         = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
-    gateway         = db.Column(db.String(20))   # "midtrans" | "stripe"
-    order_id        = db.Column(db.String(100), unique=True)
-    tier            = db.Column(db.String(20))
-    status          = db.Column(db.String(20), default="pending")  # pending|active|expired|cancelled
-    amount          = db.Column(db.Integer)      # dalam rupiah atau sen USD
-    currency        = db.Column(db.String(5), default="IDR")
-    valid_until     = db.Column(db.DateTime)
-    created_at      = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    id                   = db.Column(db.Integer, primary_key=True)
+    user_id              = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+    gateway              = db.Column(db.String(20))
+    order_id             = db.Column(db.String(100), unique=True)
+    tier                 = db.Column(db.String(20))
+    status               = db.Column(db.String(20), default="pending")  # pending|active|expired|cancelled
+    amount               = db.Column(db.Integer)
+    unique_code          = db.Column(db.Integer, nullable=True)   # 3 digit unik
+    currency             = db.Column(db.String(5), default="IDR")
+    valid_until          = db.Column(db.DateTime)
+    unique_code_expired_at = db.Column(db.DateTime, nullable=True)  # expired 24 jam
+    created_at           = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
