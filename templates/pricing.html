@@ -177,6 +177,10 @@
       <br><br>Detail sudah dikirim ke WhatsApp kamu.
     </div>
 
+    <div style="text-align:center;margin-bottom:16px;color:#555;font-size:0.82rem;">— atau bayar otomatis —</div>
+
+    <button id="btn-mayar" onclick="bayarMayar()" style="width:100%;background:linear-gradient(135deg,#6c3ce1,#a855f7);border:none;border-radius:10px;color:#fff;font-size:1rem;font-weight:700;padding:14px;cursor:pointer;margin-bottom:12px;">⚡ Bayar Otomatis via Mayar</button>
+
     <button class="modal-close" onclick="closeModal()">Tutup</button>
   </div>
 </div>
@@ -235,6 +239,22 @@
   function copyAmount() {
     const btn = document.getElementById('btn-copy-amount');
     copyText(String(selectedAmount), btn);
+  }
+
+  async function bayarMayar() {
+    const btn = document.getElementById('btn-mayar');
+    btn.disabled = true; btn.textContent = 'Memproses...';
+    const resp = await fetch('/api/checkout/mayar', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({tier: selectedTier})
+    });
+    const data = await resp.json();
+    if (data.ok) {
+      window.location.href = data.url;
+    } else {
+      alert(data.error || 'Gagal membuat link pembayaran');
+      btn.disabled = false; btn.textContent = '⚡ Bayar Otomatis via Mayar';
+    }
   }
 </script>
 </body>

@@ -274,6 +274,122 @@ def request_upgrade():
     return jsonify({"ok": True, "amount": amount, "code": code, "tier": tier})
 
 
+@app.route("/api/checkout/mayar", methods=["POST"])
+@login_required
+def checkout_mayar():
+    import requests as http_req
+    data = request.json or {}
+    tier = data.get("tier")
+    if tier not in ("pro", "business"):
+        return jsonify({"error": "Tier tidak valid"}), 400
+
+    price = 99000 if tier == "pro" else 299000
+    tier_name = "Pro" if tier == "pro" else "Business"
+    mayar_key = app.config.get("MAYAR_API_KEY", "")
+    if not mayar_key:
+        return jsonify({"error": "Payment gateway belum dikonfigurasi"}), 500
+
+    order_id = f"MAYAR-{tier.upper()}-{uuid.uuid4().hex[:8].upper()}"
+
+    payload = {
+        "amount": price,
+        "description": f"YouTube Clipper {tier_name} — 1 bulan",
+        "referenceId": order_id,
+        "name": current_user.name,
+        "email": current_user.email,
+        "phone": current_user.phone or "",
+        "redirectUrl": "https://youtubeclipper.asia/dashboard",
+        "expiredAt": (datetime.now(timezone.utc) + timedelta(hours=24)).strftime("%Y-%m-%dT%H:%M:%SZ"),
+    }
+
+    resp = http_req.post(
+        "https://api.mayar.id/hl/v1/payment/create",
+        headers={"Authorization": f"Bearer {mayar_key}", "Content-Type": "application/json"},
+        json=payload,
+        timeout=15,
+    )
+
+    if resp.status_code != 200:
+        return jsonify({"error": "Gagal membuat link pembayaran"}), 500
+
+    result = resp.json()
+    payment_url = result.get("data", {}).get("link") or result.get("data", {}).get("paymentUrl") or result.get("data", {}).get("url")
+    if not payment_url:
+        return jsonify({"error": "Link pembayaran tidak ditemukan"}), 500
+
+    # Simpan sebagai pending subscription
+    sub = Subscription(
+        user_id=current_user.id,
+        gateway="mayar",
+        order_id=order_id,
+        tier=tier,
+        amount=price,
+        currency="IDR",
+        status="pending",
+        valid_until=datetime.now(timezone.utc) + timedelta(days=30),
+    )
+    db.session.add(sub)
+    db.session.commit()
+
+    return jsonify({"ok": True, "url": payment_url})
+
+
+@app.route("/webhook/mayar", methods=["POST"])
+def webhook_mayar():
+    data = request.json or {}
+    status = data.get("status") or data.get("paymentStatus") or ""
+    order_id = data.get("referenceId") or data.get("reference_id") or ""
+
+    if status.lower() not in ("paid", "success", "completed"):
+        return jsonify({"ok": True})
+
+    sub = Subscription.query.filter_by(order_id=order_id).first()
+    if not sub or sub.status == "active":
+        return jsonify({"ok": True})
+
+    sub.status = "active"
+    sub.valid_until = datetime.now(timezone.utc) + timedelta(days=30)
+    user = User.query.get(sub.user_id)
+    if user:
+        user.tier = sub.tier
+        user.clips_used = 0
+        user.quota_exhausted_at = None
+        user.quota_reminder_count = 0
+        user.expired_at = None
+        user.expired_reminder_count = 0
+        # Cancel pending lainnya
+        for ps in Subscription.query.filter_by(user_id=user.id, status="pending").all():
+            ps.status = "cancelled"
+    db.session.commit()
+
+    # WA notif ke user
+    fonnte_token = app.config.get("FONNTE_TOKEN", "")
+    if user and user.phone and fonnte_token:
+        from auth import send_wa
+        tier_name = "Pro" if sub.tier == "pro" else "Business"
+        msg = (
+            f"Halo {user.name}! 🎉\n\n"
+            f"Pembayaran kamu berhasil!\n"
+            f"Paket *{tier_name}* sudah aktif.\n\n"
+            f"👉 https://youtubeclipper.asia"
+        )
+        threading.Thread(target=send_wa, args=(user.phone, msg, fonnte_token), daemon=True).start()
+
+    # WA notif ke admin
+    if fonnte_token:
+        from auth import send_wa
+        admin_msg = (
+            f"💰 *Pembayaran Masuk (Mayar)!*\n\n"
+            f"User: {user.name if user else '-'}\n"
+            f"Email: {user.email if user else '-'}\n"
+            f"Paket: {sub.tier.capitalize()}\n"
+            f"Nominal: Rp {sub.amount:,}"
+        )
+        threading.Thread(target=send_wa, args=("82137481104", admin_msg, fonnte_token), daemon=True).start()
+
+    return jsonify({"ok": True})
+
+
 @app.route("/admin/delete-user", methods=["POST"])
 @login_required
 def admin_delete_user():

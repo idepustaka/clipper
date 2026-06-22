@@ -21,6 +21,9 @@ class Config:
     # Xendit
     XENDIT_SECRET_KEY = os.environ.get("XENDIT_SECRET_KEY", "")
 
+    # Mayar
+    MAYAR_API_KEY = os.environ.get("MAYAR_API_KEY", "")
+
     # Fonnte WhatsApp
     FONNTE_TOKEN = os.environ.get("FONNTE_TOKEN", "")
 
