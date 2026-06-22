@@ -310,7 +310,8 @@ def checkout_mayar():
     )
 
     if resp.status_code != 200:
-        return jsonify({"error": "Gagal membuat link pembayaran"}), 500
+        app.logger.error(f"Mayar error {resp.status_code}: {resp.text}")
+        return jsonify({"error": f"Mayar: {resp.status_code} - {resp.text[:200]}"}), 500
 
     result = resp.json()
     payment_url = result.get("data", {}).get("link") or result.get("data", {}).get("paymentUrl") or result.get("data", {}).get("url")
