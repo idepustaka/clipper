@@ -82,7 +82,8 @@ def register():
                 f"Selamat datang di *YouTube Clipper*! 🎬✂️\n\n"
                 f"Akun kamu sudah aktif dengan *5 clip gratis* per bulan.\n\n"
                 f"Mulai clip video favorit kamu sekarang!\n"
-                f"👉 https://youtubeclipper.asia"
+                f"👉 https://youtubeclipper.asia\n\n"
+                f"📺 Lihat tutorial: https://youtube.com/shorts/PHnhtYA5wTM"
             )
             threading.Thread(target=send_wa, args=(phone, msg, fonnte_token), daemon=True).start()
 
