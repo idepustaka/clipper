@@ -904,7 +904,7 @@ def _reminder_job():
                             msg = (
                                 f"Halo {user.name}! ⚠️\n\n"
                                 f"Paket *Business* kamu sudah berakhir.\n\n"
-                                f"Perpanjang *Business* (unlimited) atau turun ke *Pro* (30 clip/bln).\n"
+                                f"Perpanjang sekarang untuk lanjut clip *unlimited*!\n"
                                 f"👉 https://youtubeclipper.asia/pricing"
                             )
                         else:
